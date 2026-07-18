@@ -80,7 +80,7 @@ validation, and assembles a debug APK on every push; tagging `v*` builds a
 release APK and attaches it to a GitHub Release.
 
 To require green CI before merges to `main` (plus block force-pushes and
-deletions), run `./scripts/protect-branch.sh` once with an authenticated
+deletions), run `./scripts/protect-branch.sh` (or `scripts\protect-branch.ps1` on Windows) once with an authenticated
 [GitHub CLI](https://cli.github.com).
 
 The DSP pipeline is deterministic and tested against synthetic fixtures with
