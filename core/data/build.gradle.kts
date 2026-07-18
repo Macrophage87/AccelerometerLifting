@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
@@ -31,9 +32,10 @@ kotlin {
     jvmToolchain(17)
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-    arg("room.incremental", "true")
+room {
+    // The Room Gradle plugin serializes per-variant schema output, avoiding the
+    // parallel kspDebug/kspRelease race on schemas/<db>/1.json.
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
