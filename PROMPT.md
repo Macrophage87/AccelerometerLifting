@@ -102,6 +102,35 @@ must ship with a complete GitHub Actions CI/CD pipeline from day one.
   persisted (compressed) so metrics can be recomputed after algorithm improvements.
 - Robust to BLE dropouts: auto-reconnect, mark data gaps, never lose a set.
 
+**Set-to-set guidance (rest-screen flow).** The moment a set ends, the rest screen
+must show two things side by side (this is the primary between-set surface, readable
+at a glance from a bench or the floor):
+
+1. **Feedback on the set just completed:**
+   - Reps performed vs. planned; load used.
+   - Tempo compliance per phase: prescribed vs. actual (mean and worst rep), with a
+     clear pass/warn verdict per phase (e.g., "Eccentric: 3.8 s avg vs. 4 s target —
+     on tempo"; "Concentric: slowed from 0.8 s to 1.6 s by rep 5").
+   - Velocity summary: mean/peak concentric velocity, velocity loss % across the set,
+     and — when the plan sets `targetMeanConcentricVelocity_mps` or
+     `velocityLossStop_pct` — whether the set hit or violated those targets.
+   - One-line coaching verdict derived from rules (not an LLM call): e.g., "on
+     target", "bar speed low — consider reducing load next set", "velocity-loss
+     stop was reached at rep 4; extra rep exceeded plan". Rules live in `:core:dsp`
+     and are unit-tested.
+   - HR at set end and recovery trend during rest, when the HRM is connected.
+2. **Preview of the next planned set:** exercise, set number (e.g., "Set 3 of 5"),
+   planned reps, load, tempo, target velocity / velocity-loss stop, and remaining
+   rest countdown. If the next set is a different exercise, flag the transition
+   prominently (equipment/sensor may need to be moved). At the end of the last set
+   of the session, show a session summary instead.
+- **In-set adjustments:** from the rest screen the user can edit the next set's load
+  or reps before starting it (deviating from plan). Deviations are recorded and
+  marked as such in the session export (`plannedLoad_kg` vs. `load_kg`), so LLM
+  analysis can distinguish plan changes from plan non-compliance.
+- Ad-hoc (plan-less) sessions get the same feedback panel; the preview panel shows
+  the last set's parameters as defaults for a quick repeat.
+
 ### 4.2 Exercise & history
 - Seeded exercise library (squat, bench, deadlift, OHP, rows, etc.) with per-exercise
   segmentation config; user-defined exercises.
@@ -150,7 +179,7 @@ must ship with a complete GitHub Actions CI/CD pipeline from day one.
   "exercises": [{
     "exercise": "back_squat",
     "sets": [{
-      "load_kg": 120, "reps": 5,
+      "load_kg": 120, "plannedLoad_kg": 120, "reps": 5, "plannedReps": 5,
       "repMetrics": [{
         "ecc_s": 3.9, "bottomPause_s": 0.2, "con_s": 0.8, "topPause_s": 1.1,
         "meanConVel_mps": 0.52, "peakConVel_mps": 0.85, "rom_m": 0.61
@@ -198,7 +227,8 @@ must ship with a complete GitHub Actions CI/CD pipeline from day one.
    data screen, HR decoding, CSV capture of raw streams.
 3. **DSP core**: frame transform, ZUPT integration, rep segmentation, phase timing,
    metrics — unit-tested on fixtures; live per-rep readout in replay mode.
-4. **Recording UX**: sessions/sets/rest flow, Room persistence, history views.
+4. **Recording UX**: sessions/sets/rest flow with last-set feedback and next-set
+   preview on the rest screen, Room persistence, history views.
 5. **Plan import / export + tempo compliance UI + PROMPTS.md.**
 6. **Polish**: charts, 1RM trends, release pipeline, on-device validation notes.
 
