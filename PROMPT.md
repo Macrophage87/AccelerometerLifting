@@ -95,6 +95,24 @@ must ship with a complete GitHub Actions CI/CD pipeline from day one.
 ### 4.1 Session recording
 - Device scan/pair screen (both sensors), connection status, battery levels, live
   signal preview to verify placement before starting.
+- **Auto-connect to both devices.** Pairing is a one-time act: once a WitMotion IMU
+  and/or HRM has been paired, the app remembers them (address + name, multiple
+  saved devices allowed with one "preferred" per role) and reconnects automatically
+  — no manual re-scan on subsequent uses. Specifically:
+  - On app launch and on entering the recording flow, connect to both preferred
+    devices **in parallel**; surface per-device status (connecting / connected /
+    not found) unobtrusively.
+  - Use BLE auto-connect semantics (`connectGatt(autoConnect=true)`) plus a
+    scan-based fallback for devices that rotate addresses, so devices reattach when
+    they come into range or power on — including mid-session.
+  - Each device connects independently: the HRM being absent must never block or
+    delay the IMU (and vice versa). Starting a set requires only the IMU; the HRM
+    joins silently whenever it appears.
+  - Session start guard: if the preferred IMU isn't connected when the user tries
+    to record, show a clear blocking prompt (retry / pick another device) rather
+    than failing silently.
+  - Reconnect with capped exponential backoff to protect battery; all auto-connect
+    behavior must also run under the foreground recording service (screen off).
 - Start a session from a plan (see 4.3) or ad-hoc. Within a session: select exercise,
   enter load, record set → live rep counter, live per-rep phase times, live velocity
   readout, HR overlay. Rest timer between sets (auto-starts on set end).
