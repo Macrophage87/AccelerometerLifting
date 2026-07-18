@@ -1,6 +1,8 @@
 package com.macrophage.barspeed.ui.screens
 
 import android.app.Application
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -87,9 +89,20 @@ fun SessionDetailScreen(navController: NavController, sessionId: Long) {
                 Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = BarColors.Sub)
                 Spacer(Modifier.height(10.dp))
             }
+            val saveJsonLauncher =
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument("application/json"),
+                ) { uri -> viewModel.savePendingTo(uri) }
+            val saveZipLauncher =
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument("application/zip"),
+                ) { uri -> viewModel.savePendingTo(uri) }
+
+            SectionCaption("Share")
+            Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = { viewModel.shareJson(false) }, modifier = Modifier.weight(1f)) {
-                    Text("Share JSON")
+                    Text("JSON")
                 }
                 OutlinedButton(onClick = { viewModel.shareJson(true) }, modifier = Modifier.weight(1f)) {
                     Text("Detailed")
@@ -98,10 +111,28 @@ fun SessionDetailScreen(navController: NavController, sessionId: Long) {
                     Text("Raw CSV")
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            SectionCaption("Save to phone")
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { viewModel.prepareJsonSave(false) { saveJsonLauncher.launch(it) } },
+                    modifier = Modifier.weight(1f),
+                ) { Text("JSON") }
+                OutlinedButton(
+                    onClick = { viewModel.prepareJsonSave(true) { saveJsonLauncher.launch(it) } },
+                    modifier = Modifier.weight(1f),
+                ) { Text("Detailed") }
+                OutlinedButton(
+                    onClick = { viewModel.prepareRawZipSave { saveZipLauncher.launch(it) } },
+                    modifier = Modifier.weight(1f),
+                ) { Text("Raw CSV") }
+            }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Share JSON to Claude for analysis (see PROMPTS.md); Raw CSV exports the " +
-                    "full sensor streams for Python/R.",
+                "Share JSON to Claude for analysis (see PROMPTS.md), or save it straight to " +
+                    "the phone (defaults to Downloads); Raw CSV exports the full sensor " +
+                    "streams for Python/R.",
                 style = MaterialTheme.typography.bodySmall,
                 color = BarColors.Sub,
             )
