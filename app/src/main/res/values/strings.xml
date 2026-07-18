@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bar Speed</string>
+    <string name="notification_channel_recording">Recording</string>
+    <string name="recording_notification_title">Recording session</string>
+    <string name="recording_notification_text">Tracking bar speed and heart rate</string>
+</resources>

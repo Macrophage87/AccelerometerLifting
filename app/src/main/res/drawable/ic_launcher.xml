@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M0,0h48v48h-48z" />
+    <!-- Barbell -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,18h4v12h-4z M12,21h4v6h-4z M32,21h4v6h-4z M36,18h4v12h-4z M16,22.5h16v3h-16z" />
+    <!-- Velocity arrow -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M24,6l5,7h-3v4h-4v-4h-3z" />
+</vector>

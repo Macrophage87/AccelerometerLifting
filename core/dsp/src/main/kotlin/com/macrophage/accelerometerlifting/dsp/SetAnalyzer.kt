@@ -3,9 +3,11 @@ package com.macrophage.accelerometerlifting.dsp
 import com.macrophage.accelerometerlifting.model.ImuSample
 import com.macrophage.accelerometerlifting.model.StartPhase
 import com.macrophage.accelerometerlifting.model.Tempo
+import kotlinx.serialization.Serializable
 import kotlin.math.abs
 
 /** Metrics for one segmented rep. Durations in seconds, velocities in m/s. */
+@Serializable
 data class RepAnalysis(
     val index: Int,
     val eccS: Double,
@@ -20,6 +22,7 @@ data class RepAnalysis(
     val peakPowerW: Double?,
 )
 
+@Serializable
 data class PhaseComplianceResult(
     val phase: String,
     val prescribedS: Double?,
@@ -29,6 +32,7 @@ data class PhaseComplianceResult(
     val repsEvaluated: Int,
 )
 
+@Serializable
 data class TempoComplianceResult(
     val prescribed: Tempo,
     val toleranceS: Double,
@@ -39,6 +43,7 @@ data class TempoComplianceResult(
 )
 
 /** Targets carried over from the active plan for this set, if any. */
+@Serializable
 data class SetTargets(
     val plannedReps: Int? = null,
     val tempo: Tempo? = null,
@@ -47,6 +52,7 @@ data class SetTargets(
     val velocityLossStopPct: Double? = null,
 )
 
+@Serializable
 data class SetAnalysis(
     val reps: List<RepAnalysis>,
     val sampleRateHz: Double,

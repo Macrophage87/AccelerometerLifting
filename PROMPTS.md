@@ -1,5 +1,8 @@
 # Ready-made Claude prompts
 
+> The quickest start — a self-contained "write me a plan" prompt that needs no
+> schema file attached — is in the [README](README.md#get-a-training-plan-out-of-claude-and-into-the-app).
+
 Copy one of these into a Claude conversation together with your exported session
 JSON (Settings → Export, or the share button on a session). Claude's plan replies
 can be pasted straight back into the app via Plans → Import → Paste.
