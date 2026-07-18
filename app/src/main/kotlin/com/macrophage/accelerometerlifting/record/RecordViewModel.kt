@@ -17,6 +17,7 @@ import com.macrophage.accelerometerlifting.model.ExerciseDef
 import com.macrophage.accelerometerlifting.model.HrSample
 import com.macrophage.accelerometerlifting.model.ImuSample
 import com.macrophage.accelerometerlifting.model.PlanSessionDef
+import com.macrophage.accelerometerlifting.model.StartPhase
 import com.macrophage.accelerometerlifting.model.Tempo
 import com.macrophage.accelerometerlifting.model.WeightUnit
 import kotlinx.coroutines.Dispatchers
@@ -396,7 +397,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                 val samples =
                     SyntheticSets.generate(
                         List(reps) { spec },
-                        eccentricFirst = exercise.startsWith == com.macrophage.accelerometerlifting.model.StartPhase.ECCENTRIC,
+                        eccentricFirst = exercise.startsWith == StartPhase.ECCENTRIC,
                     )
                 val epoch = System.currentTimeMillis()
                 for (sample in samples) {

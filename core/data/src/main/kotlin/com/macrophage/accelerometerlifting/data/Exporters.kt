@@ -9,6 +9,7 @@ import com.macrophage.accelerometerlifting.model.SessionExport
 import com.macrophage.accelerometerlifting.model.SetExport
 import com.macrophage.accelerometerlifting.model.SetSummaryExport
 import com.macrophage.accelerometerlifting.model.TempoComplianceExport
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
 import java.time.Instant
@@ -16,9 +17,15 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /** Builds the LLM-facing session export JSON (docs/schemas/session-export.schema.json). */
+@OptIn(ExperimentalSerializationApi::class)
 class SessionExporter(
     private val sessionRepository: SessionRepository,
-    private val json: Json = Json { prettyPrint = true; encodeDefaults = false; explicitNulls = false },
+    private val json: Json =
+        Json {
+            prettyPrint = true
+            encodeDefaults = false
+            explicitNulls = false
+        },
 ) {
     suspend fun buildExport(sessionId: Long, includeRepDetail: Boolean): SessionExport? {
         val session = sessionRepository.session(sessionId) ?: return null
