@@ -48,8 +48,12 @@ class SessionExporter(
                 .takeIf { it.isNotEmpty() }?.joinToString(" / "),
             notes = session.notes,
             heartRate =
-            if (session.hrAvgBpm != null || session.hrMaxBpm != null) {
-                HrSessionSummary(avgBpm = session.hrAvgBpm, maxBpm = session.hrMaxBpm)
+            if (session.hrAvgBpm != null || session.hrMaxBpm != null || session.hrvRmssdMs != null) {
+                HrSessionSummary(
+                    avgBpm = session.hrAvgBpm,
+                    maxBpm = session.hrMaxBpm,
+                    hrvRmssdMs = session.hrvRmssdMs?.let { Math.round(it * 10.0) / 10.0 },
+                )
             } else {
                 null
             },

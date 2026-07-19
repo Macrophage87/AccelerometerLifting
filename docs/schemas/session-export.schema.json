@@ -37,6 +37,11 @@
         },
         "maxBpm": {
           "type": "integer"
+        },
+        "hrvRmssd_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Session-wide HRV (RMSSD, ms) computed from R-R intervals with artifact rejection."
         }
       }
     },

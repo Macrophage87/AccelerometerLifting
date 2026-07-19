@@ -17,6 +17,9 @@ your training and write the next block.
   recorded as such).
 - **Auto-connect**: pair each sensor once; the app reconnects to both in parallel
   from then on. The HRM being absent never blocks the bar sensor.
+- **HRV**: R-R intervals from the strap (standard BLE, incl. Garmin HRM 600)
+  drive a live RMSSD readout on the rest screen and a per-session HRV stored,
+  shown in history, and included in exports for recovery analysis.
 - **Plan import with approval gate**: paste plan JSON from Claude — or pick a
   `.json` file — it's validated against `docs/schemas/plan.schema.json`,
   summarized, and only activated when you approve it.

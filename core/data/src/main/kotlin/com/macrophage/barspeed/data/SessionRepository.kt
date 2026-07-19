@@ -94,7 +94,7 @@ class SessionRepository(
         return setId
     }
 
-    suspend fun endSession(sessionId: Long, endedAtMs: Long) {
+    suspend fun endSession(sessionId: Long, endedAtMs: Long, hrvRmssdMs: Double? = null) {
         val session = sessionDao.sessionById(sessionId) ?: return
         val sets = sessionDao.setsForSession(sessionId)
         val avg = sets.mapNotNull { it.hrAvgBpm }
@@ -103,6 +103,7 @@ class SessionRepository(
                 endedAtMs = endedAtMs,
                 hrAvgBpm = if (avg.isEmpty()) null else avg.average().toInt(),
                 hrMaxBpm = sets.mapNotNull { it.hrMaxBpm }.maxOrNull(),
+                hrvRmssdMs = hrvRmssdMs,
             ),
         )
     }

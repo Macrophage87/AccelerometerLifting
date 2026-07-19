@@ -23,6 +23,8 @@ data class SessionExport(
 data class HrSessionSummary(
     val avgBpm: Int? = null,
     val maxBpm: Int? = null,
+    /** Session-wide HRV (RMSSD, ms) from R-R intervals. */
+    @SerialName("hrvRmssd_ms") val hrvRmssdMs: Double? = null,
 )
 
 @Serializable

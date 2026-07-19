@@ -885,14 +885,14 @@ private fun RestHeader(state: RecordState) {
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.height(6.dp))
-                FeedbackChips(feedback, state.hrBpm)
+                FeedbackChips(feedback, state.hrBpm, state.hrvMs)
             }
         }
     }
 }
 
 @Composable
-private fun FeedbackChips(feedback: SetFeedback, hrBpm: Int?) {
+private fun FeedbackChips(feedback: SetFeedback, hrBpm: Int?, hrvMs: Int? = null) {
     val analysis = feedback.analysis
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         feedback.actualDurationS?.let { actual ->
@@ -924,6 +924,7 @@ private fun FeedbackChips(feedback: SetFeedback, hrBpm: Int?) {
             )
         }
         hrBpm?.let { VerdictChip("♥ $it", ChipTone.NEUTRAL) }
+        hrvMs?.let { VerdictChip("HRV ${it}ms", ChipTone.NEUTRAL) }
     }
 }
 

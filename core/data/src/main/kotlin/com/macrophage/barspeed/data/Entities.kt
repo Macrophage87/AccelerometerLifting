@@ -33,6 +33,8 @@ data class SessionEntity(
     val notes: String? = null,
     val hrAvgBpm: Int? = null,
     val hrMaxBpm: Int? = null,
+    /** Session-wide HRV (RMSSD, ms) from R-R intervals, sets and rests included. */
+    val hrvRmssdMs: Double? = null,
 )
 
 @Entity(

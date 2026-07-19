@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RawStreamEntity::class,
         CustomExerciseEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -60,9 +60,17 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** v6: session-wide HRV (RMSSD) on sessions. */
+        private val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE sessions ADD COLUMN hrvRmssdMs REAL")
+                }
+            }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "accelerometer_lifting.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
     }

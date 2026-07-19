@@ -121,6 +121,7 @@ fun SessionDetailScreen(navController: NavController, sessionId: Long) {
                         formatter.format(started),
                         "${sets.size} sets",
                         s.hrAvgBpm?.let { "♥ $it avg / ${s.hrMaxBpm} max" },
+                        s.hrvRmssdMs?.let { "HRV ${it.toInt()} ms" },
                     )
                 Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = BarColors.Sub)
                 Spacer(Modifier.height(10.dp))

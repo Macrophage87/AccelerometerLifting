@@ -14,6 +14,7 @@ import com.macrophage.barspeed.dsp.SetAnalyzer
 import com.macrophage.barspeed.dsp.SetTargets
 import com.macrophage.barspeed.dsp.StreamingSetTracker
 import com.macrophage.barspeed.dsp.SyntheticSets
+import com.macrophage.barspeed.hrm.Hrv
 import com.macrophage.barspeed.model.ExerciseDef
 import com.macrophage.barspeed.model.ExerciseKind
 import com.macrophage.barspeed.model.HrSample
@@ -91,6 +92,8 @@ data class RecordState(
     val live: LiveSetState = LiveSetState(),
     val setElapsedS: Int = 0,
     val hrBpm: Int? = null,
+    /** Rolling HRV (RMSSD, ms) over the last ~2 minutes of beats. */
+    val hrvMs: Int? = null,
     val lastFeedback: SetFeedback? = null,
     val restRemainingS: Int = 0,
     val restTotalS: Int = 0,
@@ -152,6 +155,12 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     private var demoJob: Job? = null
     private var setStartedAtMs = 0L
     private var lastRecordedSetId: Long? = null
+
+    /** All R-R intervals seen during the active session (sets + rests) for session HRV. */
+    private val sessionRrMs = mutableListOf<Double>()
+
+    /** Recent beats only, for the live rolling HRV readout. */
+    private val recentRrMs = ArrayDeque<Double>()
     private var voice: VoiceCounter? = null
     private var lastCountedPhase: Phase = Phase.IDLE
     private var lastSpokenSecond = 0
@@ -177,10 +186,20 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                     )
             }
         }
-        // Passive HR display even outside sets.
+        // Passive HR display even outside sets; R-R intervals feed the HRV readouts.
         viewModelScope.launch {
             autoConnect.hrSamples.collect { hr ->
-                stateFlow.value = stateFlow.value.copy(hrBpm = hr.bpm)
+                if (hr.rrIntervalsMs.isNotEmpty()) {
+                    recentRrMs.addAll(hr.rrIntervalsMs)
+                    while (recentRrMs.size > ROLLING_HRV_BEATS) recentRrMs.removeFirst()
+                    val inSession = stateFlow.value.stage in setOf(Stage.READY, Stage.IN_SET, Stage.RESTING)
+                    if (inSession) sessionRrMs += hr.rrIntervalsMs
+                }
+                stateFlow.value =
+                    stateFlow.value.copy(
+                        hrBpm = hr.bpm,
+                        hrvMs = Hrv.rmssdMs(recentRrMs.toList())?.toInt(),
+                    )
             }
         }
         viewModelScope.launch {
@@ -213,6 +232,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     /** Start a session following the given plan session. */
     fun startPlanSession(planSession: PlanSessionDef) {
         viewModelScope.launch {
+            sessionRrMs.clear()
             val queue = flattenPlan(planSession)
             stateFlow.value =
                 stateFlow.value.copy(
@@ -258,6 +278,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startAdHocSession() {
+        sessionRrMs.clear()
         stateFlow.value = stateFlow.value.copy(stage = Stage.READY, adHoc = true, queue = emptyList())
     }
 
@@ -523,7 +544,9 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     fun finishSession() {
         restJob?.cancel()
         viewModelScope.launch {
-            stateFlow.value.sessionId?.let { sessionRepository.endSession(it, System.currentTimeMillis()) }
+            stateFlow.value.sessionId?.let {
+                sessionRepository.endSession(it, System.currentTimeMillis(), Hrv.rmssdMs(sessionRrMs))
+            }
             RecordingService.stop(getApplication())
             stateFlow.value = stateFlow.value.copy(stage = Stage.FINISHED)
         }
@@ -614,5 +637,8 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         const val DEFAULT_REST_S = 150
         const val REST_COUNTDOWN_FROM_S = 3
         const val TIMED_CLOSE_ENOUGH_FRACTION = 0.9
+
+        /** ~2 minutes of beats at typical training heart rates. */
+        const val ROLLING_HRV_BEATS = 150
     }
 }
