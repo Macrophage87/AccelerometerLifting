@@ -228,6 +228,8 @@ private fun SetCardHeader(record: SetRecordEntity, unit: WeightUnit) {
 @Composable
 private fun SetChips(record: SetRecordEntity, analysis: SetAnalysis) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (record.failed) VerdictChip("FAILED", ChipTone.BAD)
+        record.rpe?.let { VerdictChip("RPE $it", if (it >= 10) ChipTone.WARN else ChipTone.NEUTRAL) }
         record.actualDurationS?.let { actual ->
             val planned = record.plannedDurationS
             VerdictChip(

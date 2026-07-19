@@ -94,6 +94,9 @@ data class RecordState(
     val lastFeedback: SetFeedback? = null,
     val restRemainingS: Int = 0,
     val restTotalS: Int = 0,
+    /** RPE the lifter picked for the just-finished set (rest screen), if any. */
+    val lastSetRpe: Int? = null,
+    val lastSetFailed: Boolean = false,
     val audioCues: Boolean = false,
     val imuConnected: Boolean = false,
     val hrmConnected: Boolean = false,
@@ -147,6 +150,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     private var restJob: Job? = null
     private var demoJob: Job? = null
     private var setStartedAtMs = 0L
+    private var lastRecordedSetId: Long? = null
     private var voice: VoiceCounter? = null
     private var lastCountedPhase: Phase = Phase.IDLE
     private var lastSpokenSecond = 0
@@ -402,7 +406,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                 ).also { stateFlow.value = stateFlow.value.copy(sessionId = it) }
 
             sessionRepository.ensureExerciseExists(exercise.id)
-            sessionRepository.recordSet(
+            lastRecordedSetId = sessionRepository.recordSet(
                 sessionId = sessionId,
                 orderIdx = stateFlow.value.setsCompleted,
                 set =
@@ -444,6 +448,8 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                         side = side,
                         explosive = exercise.kind == ExerciseKind.EXPLOSIVE,
                     ),
+                    lastSetRpe = null,
+                    lastSetFailed = false,
                     restRemainingS = restS,
                     setsCompleted = stateFlow.value.setsCompleted + 1,
                     // Pre-fill next-set inputs so in-rest edits start from plan values.
@@ -474,6 +480,19 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             }
+    }
+
+    /**
+     * Rest-screen RPE tap: saves the rating on the just-finished set, then —
+     * when another set is queued (or ad-hoc) — immediately starts the next set.
+     */
+    fun rateLastSetAndContinue(rpe: Int?, failed: Boolean) {
+        val setId = lastRecordedSetId ?: return
+        viewModelScope.launch {
+            sessionRepository.rateSet(setId, rpe, failed)
+            stateFlow.value = stateFlow.value.copy(lastSetRpe = rpe, lastSetFailed = failed)
+            if (stateFlow.value.adHoc || stateFlow.value.nextSlot != null) startNextSet()
+        }
     }
 
     /** Advance to the next planned set, applying any in-rest load/rep edits. */

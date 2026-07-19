@@ -117,6 +117,9 @@ class SessionRepository(
 
     suspend fun rawStreams(setId: Long): List<RawStreamEntity> = sessionDao.rawStreamsForSet(setId)
 
+    /** Rest-screen RPE rating (or failed flag) applied to the just-recorded set. */
+    suspend fun rateSet(setId: Long, rpe: Int?, failed: Boolean) = sessionDao.updateRpe(setId, rpe, failed)
+
     suspend fun deleteSession(id: Long) = sessionDao.deleteSession(id)
 
     fun decodeAnalysis(entity: SetRecordEntity): SetAnalysis? = try {

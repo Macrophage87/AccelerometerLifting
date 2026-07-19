@@ -72,6 +72,9 @@ interface SessionDao {
     @Query("SELECT * FROM raw_streams WHERE setId = :setId")
     suspend fun rawStreamsForSet(setId: Long): List<RawStreamEntity>
 
+    @Query("UPDATE set_records SET rpe = :rpe, failed = :failed WHERE id = :setId")
+    suspend fun updateRpe(setId: Long, rpe: Int?, failed: Boolean)
+
     @Query("SELECT * FROM sessions WHERE startedAtMs >= :fromMs AND startedAtMs <= :toMs ORDER BY startedAtMs")
     suspend fun sessionsInRange(fromMs: Long, toMs: Long): List<SessionEntity>
 

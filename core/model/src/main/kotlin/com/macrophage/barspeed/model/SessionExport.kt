@@ -44,6 +44,10 @@ data class SetExport(
     @SerialName("plannedDuration_s") val plannedDurationS: Int? = null,
     /** Unilateral sets: "left" or "right". */
     val side: String? = null,
+    /** Lifter-reported RPE (6–10). */
+    val rpe: Int? = null,
+    /** True when the lifter marked the set as failed. Omitted when false. */
+    val failed: Boolean = false,
     @SerialName("rest_s") val restS: Int? = null,
     val tempoPrescribed: String? = null,
     val tempoCompliance: TempoComplianceExport? = null,

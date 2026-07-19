@@ -62,6 +62,10 @@ data class SetRecordEntity(
     val plannedDurationS: Int? = null,
     /** Unilateral sets: "left" or "right". */
     val side: String? = null,
+    /** Lifter-reported RPE (6–10), entered on the rest screen. */
+    val rpe: Int? = null,
+    /** True when the lifter marked the set as failed. */
+    val failed: Boolean = false,
     val tempo: String? = null,
     val targetMeanConVelMps: Double? = null,
     val velocityLossStopPct: Double? = null,

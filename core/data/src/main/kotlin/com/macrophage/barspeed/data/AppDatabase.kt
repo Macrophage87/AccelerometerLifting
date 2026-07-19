@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RawStreamEntity::class,
         CustomExerciseEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,9 +43,18 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** v4: lifter-reported RPE and failed-set flag on set_records. */
+        private val MIGRATION_3_4 =
+            object : Migration(3, 4) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE set_records ADD COLUMN rpe INTEGER")
+                    db.execSQL("ALTER TABLE set_records ADD COLUMN failed INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "accelerometer_lifting.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
     }

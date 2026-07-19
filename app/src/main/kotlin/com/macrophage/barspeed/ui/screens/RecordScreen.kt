@@ -1,6 +1,8 @@
 package com.macrophage.barspeed.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -702,15 +705,11 @@ private fun RestingStage(state: RecordState, viewModel: RecordViewModel) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Button(onClick = viewModel::startNextSet, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text("START NEXT SET", fontWeight = FontWeight.Bold)
-        }
+        RpeSelector(state, viewModel, startsNext = true)
     } else if (state.adHoc) {
         AdHocForm(state, viewModel)
         Spacer(Modifier.height(12.dp))
-        Button(onClick = viewModel::startNextSet, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text("START NEXT SET", fontWeight = FontWeight.Bold)
-        }
+        RpeSelector(state, viewModel, startsNext = true)
     } else {
         Card(Modifier.fillMaxWidth()) {
             Text(
@@ -720,9 +719,86 @@ private fun RestingStage(state: RecordState, viewModel: RecordViewModel) {
                 color = BarColors.Volt,
             )
         }
+        Spacer(Modifier.height(8.dp))
+        RpeSelector(state, viewModel, startsNext = false)
     }
     TextButton(onClick = viewModel::finishSession, modifier = Modifier.fillMaxWidth()) {
         Text("Finish session", color = BarColors.Sub)
+    }
+}
+
+/** One tile of the RPE grid: value (null = failed set), short description, tint. */
+private data class RpeOption(val rpe: Int?, val label: String, val description: String, val color: Color)
+
+private val RPE_OPTIONS =
+    listOf(
+        RpeOption(6, "6", "4+ reps in the tank", BarColors.Volt),
+        RpeOption(7, "7", "3 reps left", BarColors.Volt),
+        RpeOption(8, "8", "2 reps left", BarColors.VoltDim),
+        RpeOption(9, "9", "1 rep left", BarColors.Amber),
+        RpeOption(10, "10", "nothing left", BarColors.Amber),
+        RpeOption(null, "✗", "failed the set", BarColors.Red),
+    )
+
+/**
+ * Rest-screen RPE grid: tapping a rating saves it on the finished set and
+ * (when another set is queued) starts the next set in the same tap.
+ */
+@Composable
+private fun RpeSelector(state: RecordState, viewModel: RecordViewModel, startsNext: Boolean) {
+    val rated = state.lastSetRpe != null || state.lastSetFailed
+    SectionCaption(
+        when {
+            rated -> "Rated" + (state.lastSetRpe?.let { " · RPE $it" } ?: " · failed set")
+            startsNext -> "How hard was that? Tap to rate & start next set"
+            else -> "How hard was that? Tap to rate"
+        },
+    )
+    Spacer(Modifier.height(6.dp))
+    RPE_OPTIONS.chunked(3).forEach { row ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        ) {
+            row.forEach { option ->
+                val selected =
+                    if (option.rpe == null) state.lastSetFailed else state.lastSetRpe == option.rpe
+                RpeTile(option, selected, modifier = Modifier.weight(1f)) {
+                    viewModel.rateLastSetAndContinue(option.rpe, failed = option.rpe == null)
+                }
+            }
+        }
+    }
+    if (startsNext) {
+        TextButton(onClick = viewModel::startNextSet, modifier = Modifier.fillMaxWidth()) {
+            Text("Start next set without rating", color = BarColors.Sub)
+        }
+    }
+}
+
+@Composable
+private fun RpeTile(option: RpeOption, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier =
+        modifier
+            .clip(shape)
+            .background(if (selected) option.color.copy(alpha = 0.2f) else BarColors.Surface, shape)
+            .border(1.dp, if (selected) option.color else BarColors.Track, shape)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+    ) {
+        Text(
+            option.label,
+            style = MaterialTheme.typography.headlineSmall,
+            color = option.color,
+        )
+        Text(
+            option.description,
+            style = MaterialTheme.typography.bodySmall,
+            color = BarColors.Sub,
+        )
     }
 }
 

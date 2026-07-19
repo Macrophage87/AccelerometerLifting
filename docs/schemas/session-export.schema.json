@@ -184,6 +184,16 @@
             "right"
           ],
           "description": "Unilateral sets: which side was trained."
+        },
+        "rpe": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Lifter-reported RPE, entered on the rest screen."
+        },
+        "failed": {
+          "type": "boolean",
+          "description": "True when the lifter marked the set as failed."
         }
       }
     },
