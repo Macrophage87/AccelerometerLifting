@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "planName": "Hypertrophy Block W3",
   "notes": "Week 3 of 4. Keep eccentrics honest.",
   "sessions": [
@@ -9,16 +9,74 @@
         {
           "exercise": "back_squat",
           "sets": [
-            { "reps": 5, "load_kg": 100, "tempo": "4010", "rest_s": 180 },
-            { "reps": 5, "load_kg": 120, "tempo": "4010", "targetMeanConcentricVelocity_mps": 0.5, "velocityLossStop_pct": 20, "rest_s": 180 },
-            { "reps": 5, "load_kg": 120, "tempo": "4010", "targetMeanConcentricVelocity_mps": 0.5, "velocityLossStop_pct": 20, "rest_s": 180 }
+            {
+              "reps": 5,
+              "load_kg": 100,
+              "tempo": "4010",
+              "rest_s": 180
+            },
+            {
+              "reps": 5,
+              "load_kg": 120,
+              "tempo": "4010",
+              "targetMeanConcentricVelocity_mps": 0.5,
+              "velocityLossStop_pct": 20,
+              "rest_s": 180
+            },
+            {
+              "reps": 5,
+              "load_kg": 120,
+              "tempo": "4010",
+              "targetMeanConcentricVelocity_mps": 0.5,
+              "velocityLossStop_pct": 20,
+              "rest_s": 180
+            }
           ]
         },
         {
           "exercise": "romanian_deadlift",
           "sets": [
-            { "reps": 8, "load_kg": 90, "tempo": "3010", "rest_s": 150 },
-            { "reps": 8, "load_kg": 90, "tempo": "3010", "rest_s": 150 }
+            {
+              "reps": 8,
+              "load_kg": 90,
+              "tempo": "3010",
+              "rest_s": 150
+            },
+            {
+              "reps": 8,
+              "load_kg": 90,
+              "tempo": "3010",
+              "rest_s": 150
+            }
+          ]
+        },
+        {
+          "exercise": "farmers_walk",
+          "sets": [
+            {
+              "duration_s": 40,
+              "load_kg": 48,
+              "rest_s": 90
+            },
+            {
+              "duration_s": 40,
+              "load_kg": 48,
+              "rest_s": 90
+            }
+          ]
+        },
+        {
+          "exercise": "plank",
+          "notes": "Bodyweight; brace hard.",
+          "sets": [
+            {
+              "duration_s": 60,
+              "rest_s": 60
+            },
+            {
+              "duration_s": 60,
+              "rest_s": 60
+            }
           ]
         }
       ]
@@ -29,8 +87,20 @@
         {
           "exercise": "bench_press",
           "sets": [
-            { "reps": 5, "load_lb": 175, "tempo": "30X0", "targetMeanConcentricVelocity_mps": 0.4, "rest_s": 180 },
-            { "reps": 5, "load_lb": 175, "tempo": "30X0", "targetMeanConcentricVelocity_mps": 0.4, "rest_s": 180 }
+            {
+              "reps": 5,
+              "load_lb": 175,
+              "tempo": "30X0",
+              "targetMeanConcentricVelocity_mps": 0.4,
+              "rest_s": 180
+            },
+            {
+              "reps": 5,
+              "load_lb": 175,
+              "tempo": "30X0",
+              "targetMeanConcentricVelocity_mps": 0.4,
+              "rest_s": 180
+            }
           ]
         }
       ]

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.macrophage.barspeed.dsp.SetAnalysis
+import com.macrophage.barspeed.model.ExerciseKind
 import com.macrophage.barspeed.model.Phase
 import com.macrophage.barspeed.model.Tempo
 import com.macrophage.barspeed.model.WeightUnit
@@ -177,13 +178,14 @@ private fun ReadyStage(state: RecordState, viewModel: RecordViewModel) {
         AdHocForm(state, viewModel)
     }
     Spacer(Modifier.height(16.dp))
-    val canStart = state.imuConnected || state.demoMode
+    // Timed sets (planks, carries) don't need the bar sensor at all.
+    val canStart = state.currentIsTimed || state.imuConnected || state.demoMode
     Button(onClick = viewModel::beginSet, enabled = canStart, modifier = Modifier.fillMaxWidth().height(56.dp)) {
         Text(if (canStart) "START SET" else "Bar sensor not connected", fontWeight = FontWeight.Bold)
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!state.imuConnected) {
+        if (!state.imuConnected && !state.currentIsTimed) {
             FilterChip(
                 selected = state.demoMode,
                 onClick = viewModel::toggleDemoMode,
@@ -242,28 +244,44 @@ private fun AdHocForm(state: RecordState, viewModel: RecordViewModel) {
         OutlinedTextField(
             value = state.loadInput,
             onValueChange = viewModel::updateLoadInput,
-            label = { Text("Load (${state.weightUnit.suffix})") },
+            label = {
+                val suffix = state.weightUnit.suffix
+                Text(if (state.currentIsTimed) "Load ($suffix, 0 = BW)" else "Load ($suffix)")
+            },
             modifier = Modifier.weight(1f),
         )
-        OutlinedTextField(
-            value = state.repsInput,
-            onValueChange = viewModel::updateRepsInput,
-            label = { Text("Reps") },
-            modifier = Modifier.weight(1f),
-        )
-        OutlinedTextField(
-            value = state.tempoInput,
-            onValueChange = viewModel::updateTempoInput,
-            label = { Text("Tempo") },
-            placeholder = { Text("4010") },
-            modifier = Modifier.weight(1f),
-        )
+        if (state.currentIsTimed) {
+            OutlinedTextField(
+                value = state.durationInput,
+                onValueChange = viewModel::updateDurationInput,
+                label = { Text("Hold (s)") },
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            OutlinedTextField(
+                value = state.repsInput,
+                onValueChange = viewModel::updateRepsInput,
+                label = { Text("Reps") },
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = state.tempoInput,
+                onValueChange = viewModel::updateTempoInput,
+                label = { Text("Tempo") },
+                placeholder = { Text("4010") },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
 @Composable
 private fun InSetStage(state: RecordState, viewModel: RecordViewModel) {
     val slot = state.currentSlot
+    if (state.currentIsTimed) {
+        TimedSetStage(state, viewModel, slot)
+        return
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         InSetHeader(state, slot)
         Spacer(Modifier.height(10.dp))
@@ -291,6 +309,63 @@ private fun InSetStage(state: RecordState, viewModel: RecordViewModel) {
     }
 }
 
+/** In-set display for holds and carries: big countdown ring, no velocity metrics. */
+@Composable
+private fun TimedSetStage(state: RecordState, viewModel: RecordViewModel, slot: PlannedSlot?) {
+    val targetS = state.currentTimedTargetS
+    val elapsed = state.setElapsedS
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        InSetHeader(state, slot)
+        Spacer(Modifier.height(10.dp))
+        val remaining = targetS?.let { it - elapsed }
+        val ringColor = if (remaining != null && remaining < 0) BarColors.Amber else BarColors.Volt
+        ProgressRing(
+            progress = targetS?.let { (elapsed / it.toFloat()) } ?: 0f,
+            color = ringColor,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    if (slot?.exercise?.kind == ExerciseKind.CARRY) "CARRY" else "HOLD",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = BarColors.Sub,
+                    letterSpacing = 2.sp,
+                )
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        (remaining?.coerceAtLeast(0) ?: elapsed).toString(),
+                        style = MaterialTheme.typography.displayLarge,
+                    )
+                    Text(
+                        "s",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = BarColors.Sub,
+                        modifier = Modifier.padding(bottom = 10.dp),
+                    )
+                }
+                Text(
+                    when {
+                        targetS == null -> "elapsed"
+                        remaining != null && remaining < 0 -> "target ${targetS}s — bonus time!"
+                        else -> "of ${targetS}s target"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BarColors.Sub,
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            "Elapsed ${formatMmSs(elapsed)}",
+            style = MaterialTheme.typography.titleMedium,
+            color = BarColors.Sub,
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = viewModel::endSet, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            Text("END SET", style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
 @Composable
 private fun InSetHeader(state: RecordState, slot: PlannedSlot?) {
     val exerciseName =
@@ -302,7 +377,8 @@ private fun InSetHeader(state: RecordState, slot: PlannedSlot?) {
         listOfNotNull(
             exerciseName,
             slot?.let { "Set ${it.setIndexInExercise + 1}/${it.setsInExercise}" },
-            loadKg?.let { state.weightUnit.format(it) },
+            loadKg?.takeIf { it > 0 }?.let { state.weightUnit.format(it) }
+                ?: "bodyweight".takeIf { state.currentIsTimed },
         )
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -453,12 +529,21 @@ private fun RestingStage(state: RecordState, viewModel: RecordViewModel) {
                 label = { Text("Load (${state.weightUnit.suffix})") },
                 modifier = Modifier.weight(1f),
             )
-            OutlinedTextField(
-                value = state.repsInput,
-                onValueChange = viewModel::updateRepsInput,
-                label = { Text("Reps") },
-                modifier = Modifier.weight(1f),
-            )
+            if (next.isTimed) {
+                OutlinedTextField(
+                    value = state.durationInput,
+                    onValueChange = viewModel::updateDurationInput,
+                    label = { Text("Hold (s)") },
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                OutlinedTextField(
+                    value = state.repsInput,
+                    onValueChange = viewModel::updateRepsInput,
+                    label = { Text("Reps") },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         Button(onClick = viewModel::startNextSet, modifier = Modifier.fillMaxWidth().height(56.dp)) {
@@ -500,10 +585,11 @@ private fun RestHeader(state: RecordState) {
         Column {
             SectionCaption("Last set")
             state.lastFeedback?.let { feedback ->
+                val loadText =
+                    feedback.loadKg.takeIf { it > 0 }?.let { state.weightUnit.format(it) } ?: "BW"
                 Text(
-                    "${feedback.exerciseName} ${feedback.analysis.reps.size} × ${state.weightUnit.format(
-                        feedback.loadKg,
-                    )}",
+                    feedback.actualDurationS?.let { "${feedback.exerciseName} ${it}s @ $loadText" }
+                        ?: "${feedback.exerciseName} ${feedback.analysis.reps.size} × $loadText",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.height(6.dp))
@@ -517,6 +603,17 @@ private fun RestHeader(state: RecordState) {
 private fun FeedbackChips(feedback: SetFeedback, hrBpm: Int?) {
     val analysis = feedback.analysis
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        feedback.actualDurationS?.let { actual ->
+            val planned = feedback.plannedDurationS
+            VerdictChip(
+                if (planned != null) "Held $actual/${planned}s" else "Held ${actual}s",
+                when {
+                    planned == null || actual >= planned -> ChipTone.OK
+                    actual >= (planned * 0.9).toInt() -> ChipTone.WARN
+                    else -> ChipTone.BAD
+                },
+            )
+        }
         analysis.tempoCompliance?.let { compliance ->
             val ok = compliance.repsFullyCompliant == compliance.repsEvaluated
             VerdictChip(
@@ -541,6 +638,18 @@ private fun FeedbackChips(feedback: SetFeedback, hrBpm: Int?) {
 @Composable
 private fun RepQualityCard(feedback: SetFeedback) {
     val analysis = feedback.analysis
+    // Timed sets have no reps; surface the hold verdicts instead of a chart.
+    if (feedback.actualDurationS != null) {
+        if (analysis.verdicts.isEmpty()) return
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                analysis.verdicts.forEach {
+                    Text("• $it", style = MaterialTheme.typography.bodySmall, color = BarColors.Sub)
+                }
+            }
+        }
+        return
+    }
     if (analysis.reps.isEmpty()) return
     val tempo = feedback.tempo?.let { Tempo.parseOrNull(it) }
     Card(Modifier.fillMaxWidth()) {
@@ -635,7 +744,11 @@ private fun SlotCard(slot: PlannedSlot, heading: String, unit: WeightUnit, highl
             val core =
                 listOfNotNull(
                     slot.reps?.let { "$it reps" },
-                    slot.loadKg?.let { unit.format(it) },
+                    slot.durationS?.let {
+                        "${it}s " + if (slot.exercise.kind == ExerciseKind.CARRY) "carry" else "hold"
+                    },
+                    slot.loadKg?.takeIf { it > 0 }?.let { unit.format(it) }
+                        ?: "bodyweight".takeIf { slot.isTimed },
                     slot.tempo?.let { "tempo $it" },
                 ).joinToString(" · ")
             Text(

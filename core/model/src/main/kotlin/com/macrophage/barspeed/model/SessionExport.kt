@@ -39,6 +39,9 @@ data class SetExport(
     @SerialName("plannedLoad_kg") val plannedLoadKg: Double? = null,
     val reps: Int,
     val plannedReps: Int? = null,
+    /** Actual hold/carry time for timed sets (planks, farmer's walks). */
+    @SerialName("duration_s") val durationS: Int? = null,
+    @SerialName("plannedDuration_s") val plannedDurationS: Int? = null,
     @SerialName("rest_s") val restS: Int? = null,
     val tempoPrescribed: String? = null,
     val tempoCompliance: TempoComplianceExport? = null,

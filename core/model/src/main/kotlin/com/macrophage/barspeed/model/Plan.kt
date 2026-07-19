@@ -13,8 +13,9 @@ data class PlanFile(
 ) {
     fun validate(): List<String> {
         val errors = mutableListOf<String>()
-        if (schemaVersion != SCHEMA_VERSION) {
-            errors += "Unsupported schemaVersion '$schemaVersion' (expected $SCHEMA_VERSION)"
+        if (schemaVersion !in SUPPORTED_SCHEMA_VERSIONS) {
+            errors += "Unsupported schemaVersion '$schemaVersion' " +
+                "(expected one of ${SUPPORTED_SCHEMA_VERSIONS.joinToString()})"
         }
         if (planName.isBlank()) errors += "planName must not be blank"
         if (sessions.isEmpty()) errors += "Plan must contain at least one session"
@@ -25,23 +26,7 @@ data class PlanFile(
                 if (exercise.exercise.isBlank()) errors += "sessions[$si].exercises[$ei].exercise must not be blank"
                 if (exercise.sets.isEmpty()) errors += "sessions[$si].exercises[$ei] must contain at least one set"
                 exercise.sets.forEachIndexed { xi, set ->
-                    val path = "sessions[$si].exercises[$ei].sets[$xi]"
-                    if (set.reps <= 0) errors += "$path.reps must be positive"
-                    if (set.loadKg == null && set.loadLb == null) {
-                        errors += "$path must have load_kg or load_lb"
-                    }
-                    if (set.loadKg != null && set.loadLb != null) {
-                        errors += "$path must not have both load_kg and load_lb"
-                    }
-                    if ((set.loadKg ?: 0.0) < 0 || (set.loadLb ?: 0.0) < 0) {
-                        errors += "$path load must be >= 0"
-                    }
-                    set.tempo?.let {
-                        if (Tempo.parseOrNull(it) == null) errors += "$path.tempo '$it' is not valid tempo notation"
-                    }
-                    set.velocityLossStopPct?.let {
-                        if (it <= 0 || it > 100) errors += "$path.velocityLossStop_pct must be in (0, 100]"
-                    }
+                    errors += set.validate("sessions[$si].exercises[$ei].sets[$xi]")
                 }
             }
         }
@@ -49,7 +34,8 @@ data class PlanFile(
     }
 
     companion object {
-        const val SCHEMA_VERSION = "1.0"
+        const val SCHEMA_VERSION = "1.1"
+        val SUPPORTED_SCHEMA_VERSIONS = setOf("1.0", "1.1")
     }
 }
 
@@ -69,8 +55,11 @@ data class PlanExerciseDef(
 
 @Serializable
 data class PlanSetDef(
-    val reps: Int,
-    /** Load in kilograms; exactly one of load_kg / load_lb must be present. */
+    /** Rep count for dynamic sets; exactly one of reps / duration_s must be present. */
+    val reps: Int? = null,
+    /** Duration for timed sets (planks, carries); exactly one of reps / duration_s. */
+    @SerialName("duration_s") val durationS: Int? = null,
+    /** Load in kilograms; at most one of load_kg / load_lb. Omit both for bodyweight. */
     @SerialName("load_kg") val loadKg: Double? = null,
     /** Load in pounds; converted to kilograms on import. */
     @SerialName("load_lb") val loadLb: Double? = null,
@@ -82,4 +71,34 @@ data class PlanSetDef(
     /** Canonical load in kilograms regardless of which unit the plan used. */
     val resolvedLoadKg: Double?
         get() = loadKg ?: loadLb?.let { it / WeightUnit.LB_PER_KG }
+
+    val isTimed: Boolean get() = durationS != null
+
+    fun validate(path: String): List<String> {
+        val errors = mutableListOf<String>()
+        if (reps == null && durationS == null) {
+            errors += "$path must have reps (dynamic set) or duration_s (hold/carry)"
+        }
+        if (reps != null && durationS != null) {
+            errors += "$path must not have both reps and duration_s"
+        }
+        reps?.let { if (it <= 0) errors += "$path.reps must be positive" }
+        durationS?.let { if (it <= 0) errors += "$path.duration_s must be positive" }
+        if (loadKg != null && loadLb != null) {
+            errors += "$path must not have both load_kg and load_lb"
+        }
+        if ((loadKg ?: 0.0) < 0 || (loadLb ?: 0.0) < 0) {
+            errors += "$path load must be >= 0"
+        }
+        if (tempo != null && durationS != null) {
+            errors += "$path.tempo does not apply to timed sets"
+        }
+        tempo?.let {
+            if (Tempo.parseOrNull(it) == null) errors += "$path.tempo '$it' is not valid tempo notation"
+        }
+        velocityLossStopPct?.let {
+            if (it <= 0 || it > 100) errors += "$path.velocityLossStop_pct must be in (0, 100]"
+        }
+        return errors
+    }
 }

@@ -38,6 +38,8 @@ data class PlannedSlot(
     val setIndexInExercise: Int,
     val setsInExercise: Int,
     val reps: Int?,
+    /** Hold/carry seconds for timed sets (plank, farmer's walk); null for rep sets. */
+    val durationS: Int? = null,
     val loadKg: Double?,
     val plannedLoadKg: Double?,
     val tempo: String?,
@@ -45,7 +47,9 @@ data class PlannedSlot(
     val velocityLossStopPct: Double? = null,
     val restS: Int? = null,
     val isExerciseChange: Boolean = false,
-)
+) {
+    val isTimed: Boolean get() = durationS != null || exercise.isTimed
+}
 
 data class SetFeedback(
     val exerciseName: String,
@@ -53,6 +57,8 @@ data class SetFeedback(
     val analysis: SetAnalysis,
     val plannedReps: Int?,
     val tempo: String?,
+    val actualDurationS: Int? = null,
+    val plannedDurationS: Int? = null,
 )
 
 data class RecordState(
@@ -67,6 +73,7 @@ data class RecordState(
     val selectedExerciseId: String = ExerciseDef.SEED.first().id,
     val loadInput: String = "60",
     val repsInput: String = "5",
+    val durationInput: String = "60",
     val tempoInput: String = "",
     val live: LiveSetState = LiveSetState(),
     val setElapsedS: Int = 0,
@@ -84,6 +91,15 @@ data class RecordState(
 ) {
     val currentSlot: PlannedSlot? get() = queue.getOrNull(queueIndex)
     val nextSlot: PlannedSlot? get() = queue.getOrNull(queueIndex + 1)
+
+    /** True when the set being set up / recorded is duration-based (hold or carry). */
+    val currentIsTimed: Boolean
+        get() = currentSlot?.isTimed
+            ?: (adHoc && exerciseOptions.firstOrNull { it.id == selectedExerciseId }?.isTimed == true)
+
+    /** Target seconds for the current timed set. */
+    val currentTimedTargetS: Int?
+        get() = if (!currentIsTimed) null else currentSlot?.durationS ?: durationInput.toIntOrNull()
 }
 
 class RecordViewModel(app: Application) : AndroidViewModel(app) {
@@ -192,6 +208,10 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         stateFlow.value = stateFlow.value.copy(repsInput = text)
     }
 
+    fun updateDurationInput(text: String) {
+        stateFlow.value = stateFlow.value.copy(durationInput = text)
+    }
+
     fun updateTempoInput(text: String) {
         stateFlow.value = stateFlow.value.copy(tempoInput = text)
     }
@@ -209,11 +229,12 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         setStartedAtMs = System.currentTimeMillis()
         RecordingService.start(getApplication())
 
+        val timedTargetS = s.currentTimedTargetS
         collectJob =
             viewModelScope.launch {
                 autoConnect.imuSamples.collect { sample -> onSample(sample) }
             }
-        if (s.demoMode) startDemoStream(s, exercise)
+        if (s.demoMode && !s.currentIsTimed) startDemoStream(s, exercise)
         hrJob =
             viewModelScope.launch {
                 autoConnect.hrSamples.collect { hr ->
@@ -228,6 +249,12 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                     delay(1_000)
                     seconds++
                     stateFlow.value = stateFlow.value.copy(setElapsedS = seconds)
+                    if (timedTargetS != null && stateFlow.value.audioCues) {
+                        when (timedTargetS - seconds) {
+                            in 1..REST_COUNTDOWN_FROM_S -> voice?.speak((timedTargetS - seconds).toString())
+                            0 -> voice?.speak("Time")
+                        }
+                    }
                 }
             }
         stateFlow.value = s.copy(stage = Stage.IN_SET, setElapsedS = 0, live = LiveSetState())
@@ -264,10 +291,19 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         val s = stateFlow.value
         val exercise = currentExercise(s)
         val slot = s.currentSlot
+        val isTimed = s.currentIsTimed
         val loadKg =
             if (s.adHoc || slot?.loadKg == null) s.weightUnit.parseToKg(s.loadInput) ?: 0.0 else slot.loadKg
         val plannedReps = if (s.adHoc) s.repsInput.toIntOrNull() else slot?.reps
-        val tempoText = if (s.adHoc) s.tempoInput.ifBlank { null } else slot?.tempo
+        val plannedDurationS = if (isTimed) s.currentTimedTargetS else null
+        val actualDurationS =
+            if (isTimed) ((System.currentTimeMillis() - setStartedAtMs) / 1000L).toInt() else null
+        val tempoText =
+            when {
+                isTimed -> null
+                s.adHoc -> s.tempoInput.ifBlank { null }
+                else -> slot?.tempo
+            }
         val samples = imuBuffer.toList()
         val hrSamples = hrBuffer.toList()
 
@@ -281,10 +317,16 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                 )
             val analysis =
                 withContext(Dispatchers.Default) {
-                    if (samples.size >= 8) {
-                        SetAnalyzer.analyze(samples, exercise.startsWith, loadKg, targets)
-                    } else {
-                        SetAnalysis(emptyList(), 0.0, null, null, listOf("No sensor data recorded."))
+                    when {
+                        isTimed -> SetAnalysis(
+                            emptyList(),
+                            0.0,
+                            null,
+                            null,
+                            timedVerdicts(actualDurationS, plannedDurationS),
+                        )
+                        samples.size >= 8 -> SetAnalyzer.analyze(samples, exercise.startsWith, loadKg, targets)
+                        else -> SetAnalysis(emptyList(), 0.0, null, null, listOf("No sensor data recorded."))
                     }
                 }
             val sessionId =
@@ -305,6 +347,8 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                     loadKg = loadKg,
                     plannedLoadKg = slot?.plannedLoadKg,
                     plannedReps = plannedReps,
+                    actualDurationS = actualDurationS,
+                    plannedDurationS = plannedDurationS,
                     tempo = tempoText,
                     targetMeanConVelMps = slot?.targetMeanConVelMps,
                     velocityLossStopPct = slot?.velocityLossStopPct,
@@ -329,12 +373,17 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                         analysis = analysis,
                         plannedReps = plannedReps,
                         tempo = tempoText,
+                        actualDurationS = actualDurationS,
+                        plannedDurationS = plannedDurationS,
                     ),
                     restRemainingS = restS,
                     setsCompleted = stateFlow.value.setsCompleted + 1,
                     // Pre-fill next-set inputs so in-rest edits start from plan values.
                     loadInput = stateFlow.value.weightUnit.inputValue(stateFlow.value.nextSlot?.loadKg ?: loadKg),
                     repsInput = (stateFlow.value.nextSlot?.reps ?: plannedReps ?: 5).toString(),
+                    durationInput =
+                    (stateFlow.value.nextSlot?.durationS ?: plannedDurationS)?.toString()
+                        ?: stateFlow.value.durationInput,
                     tempoInput = stateFlow.value.nextSlot?.tempo ?: tempoText ?: "",
                 )
             startRestCountdown()
@@ -364,11 +413,13 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         restJob?.cancel()
         val s = stateFlow.value
         if (!s.adHoc && s.nextSlot != null) {
+            val next = s.nextSlot!!
             val edited =
-                s.nextSlot!!.copy(
-                    loadKg = s.weightUnit.parseToKg(s.loadInput) ?: s.nextSlot!!.loadKg,
-                    reps = s.repsInput.toIntOrNull() ?: s.nextSlot!!.reps,
-                    tempo = s.tempoInput.ifBlank { null } ?: s.nextSlot!!.tempo,
+                next.copy(
+                    loadKg = s.weightUnit.parseToKg(s.loadInput) ?: next.loadKg,
+                    reps = if (next.isTimed) next.reps else s.repsInput.toIntOrNull() ?: next.reps,
+                    durationS = if (next.isTimed) s.durationInput.toIntOrNull() ?: next.durationS else next.durationS,
+                    tempo = s.tempoInput.ifBlank { null } ?: next.tempo,
                 )
             val queue = s.queue.toMutableList()
             queue[s.queueIndex + 1] = edited
@@ -407,6 +458,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                         setIndexInExercise = setIdx,
                         setsInExercise = exerciseDef.sets.size,
                         reps = set.reps,
+                        durationS = set.durationS,
                         loadKg = set.resolvedLoadKg,
                         plannedLoadKg = set.resolvedLoadKg,
                         tempo = set.tempo,
@@ -449,6 +501,17 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
             }
     }
 
+    private fun timedVerdicts(actualS: Int?, plannedS: Int?): List<String> {
+        if (actualS == null) return emptyList()
+        return when {
+            plannedS == null -> listOf("Held ${actualS}s.")
+            actualS >= plannedS -> listOf("Held ${actualS}s — full ${plannedS}s target. Nice.")
+            actualS >= (plannedS * TIMED_CLOSE_ENOUGH_FRACTION).toInt() ->
+                listOf("Held ${actualS}s of ${plannedS}s — just short.")
+            else -> listOf("Held ${actualS}s of ${plannedS}s. Consider a shorter target or lighter load.")
+        }
+    }
+
     override fun onCleared() {
         voice?.shutdown()
         voice = null
@@ -458,5 +521,6 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val DEFAULT_REST_S = 150
         const val REST_COUNTDOWN_FROM_S = 3
+        const val TIMED_CLOSE_ENOUGH_FRACTION = 0.9
     }
 }

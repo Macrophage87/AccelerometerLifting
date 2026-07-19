@@ -16,6 +16,9 @@ data class CompletedSet(
     val loadKg: Double,
     val plannedLoadKg: Double?,
     val plannedReps: Int?,
+    /** Timed sets (planks, carries): actual and planned hold/carry seconds. */
+    val actualDurationS: Int? = null,
+    val plannedDurationS: Int? = null,
     val tempo: String?,
     val targetMeanConVelMps: Double?,
     val velocityLossStopPct: Double?,
@@ -52,6 +55,8 @@ class SessionRepository(
                     plannedLoadKg = set.plannedLoadKg,
                     actualReps = set.analysis.reps.size,
                     plannedReps = set.plannedReps,
+                    actualDurationS = set.actualDurationS,
+                    plannedDurationS = set.plannedDurationS,
                     tempo = set.tempo,
                     targetMeanConVelMps = set.targetMeanConVelMps,
                     velocityLossStopPct = set.velocityLossStopPct,

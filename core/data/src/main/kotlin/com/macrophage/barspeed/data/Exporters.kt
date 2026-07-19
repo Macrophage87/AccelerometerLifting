@@ -69,6 +69,8 @@ class SessionExporter(
             plannedLoadKg = record.plannedLoadKg,
             reps = record.actualReps,
             plannedReps = record.plannedReps,
+            durationS = record.actualDurationS,
+            plannedDurationS = record.plannedDurationS,
             restS = record.plannedRestS,
             tempoPrescribed = record.tempo,
             tempoCompliance =

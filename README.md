@@ -36,15 +36,18 @@ Copy this prompt into Claude (fill in the bracketed context), then in the app:
 > days/week, equipment, current working weights or estimated 1RMs].
 >
 > Reply with ONLY a JSON document (no prose, no code fences) conforming exactly to
-> this schema: top level `{"schemaVersion": "1.0", "planName": string,
+> this schema: top level `{"schemaVersion": "1.1", "planName": string,
 > "sessions": [...]}`. Each session is `{"name": string, "exercises": [...]}`.
 > Each exercise is `{"exercise": snake_case_id, "sets": [...]}` — use ids like
 > `back_squat`, `bench_press`, `deadlift`, `overhead_press`, `barbell_row`,
-> `romanian_deadlift`, `front_squat`, `hip_thrust`. Each set is
-> `{"reps": int}` plus the load as either `"load_kg"` or `"load_lb"` (exactly one,
-> whichever unit I use), plus optional `"tempo"` (4-digit notation
-> like "4010" or "30X0" — eccentric, bottom pause, concentric, top pause seconds,
-> X = explosive), `"targetMeanConcentricVelocity_mps"` (number),
+> `romanian_deadlift`, `front_squat`, `hip_thrust`, and for timed work `plank`,
+> `side_plank`, `dead_hang`, `farmers_walk`, `suitcase_carry`. Each set has
+> exactly one of `{"reps": int}` (dynamic sets) or `{"duration_s": int}` (holds
+> and carries — planks, farmer's walks). Load is `"load_kg"` or `"load_lb"` (at
+> most one, whichever unit I use; omit both for bodyweight). Optional per set:
+> `"tempo"` (4-digit notation like "4010" or "30X0" — eccentric, bottom pause,
+> concentric, top pause seconds, X = explosive; dynamic sets only),
+> `"targetMeanConcentricVelocity_mps"` (number),
 > `"velocityLossStop_pct"` (number, e.g. 20), and `"rest_s"` (int).
 >
 > The app measures bar velocity and phase durations with a bar-mounted IMU, so

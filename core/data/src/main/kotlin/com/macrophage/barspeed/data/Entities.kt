@@ -57,6 +57,9 @@ data class SetRecordEntity(
     val plannedLoadKg: Double? = null,
     val actualReps: Int,
     val plannedReps: Int? = null,
+    /** Timed sets (planks, carries): actual and planned hold/carry seconds. */
+    val actualDurationS: Int? = null,
+    val plannedDurationS: Int? = null,
     val tempo: String? = null,
     val targetMeanConVelMps: Double? = null,
     val velocityLossStopPct: Double? = null,

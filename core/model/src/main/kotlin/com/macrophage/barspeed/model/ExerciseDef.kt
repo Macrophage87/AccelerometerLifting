@@ -2,14 +2,30 @@ package com.macrophage.barspeed.model
 
 import kotlinx.serialization.Serializable
 
+/** How an exercise is performed and therefore how a set of it is measured. */
+@Serializable
+enum class ExerciseKind {
+    /** Rep-based barbell/dumbbell movement — velocity and tempo tracking apply. */
+    DYNAMIC,
+
+    /** Isometric hold (plank, dead hang) — measured by duration. */
+    HOLD,
+
+    /** Loaded carry (farmer's walk) — measured by duration; load still matters. */
+    CARRY,
+}
+
 /** Exercise definition with per-exercise segmentation configuration. */
 @Serializable
 data class ExerciseDef(
     val id: String,
     val displayName: String,
     val startsWith: StartPhase = StartPhase.ECCENTRIC,
+    val kind: ExerciseKind = ExerciseKind.DYNAMIC,
     val isCustom: Boolean = false,
 ) {
+    val isTimed: Boolean get() = kind != ExerciseKind.DYNAMIC
+
     companion object {
         val SEED: List<ExerciseDef> =
             listOf(
@@ -21,6 +37,11 @@ data class ExerciseDef(
                 ExerciseDef("romanian_deadlift", "Romanian Deadlift"),
                 ExerciseDef("barbell_row", "Barbell Row", startsWith = StartPhase.CONCENTRIC),
                 ExerciseDef("hip_thrust", "Hip Thrust", startsWith = StartPhase.CONCENTRIC),
+                ExerciseDef("plank", "Plank", kind = ExerciseKind.HOLD),
+                ExerciseDef("side_plank", "Side Plank", kind = ExerciseKind.HOLD),
+                ExerciseDef("dead_hang", "Dead Hang", kind = ExerciseKind.HOLD),
+                ExerciseDef("farmers_walk", "Farmer's Walk", kind = ExerciseKind.CARRY),
+                ExerciseDef("suitcase_carry", "Suitcase Carry", kind = ExerciseKind.CARRY),
             )
 
         fun seedById(id: String): ExerciseDef? = SEED.firstOrNull { it.id == id }

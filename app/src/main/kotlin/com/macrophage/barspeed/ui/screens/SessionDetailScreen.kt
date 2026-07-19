@@ -168,8 +168,13 @@ private fun SetCard(record: SetRecordEntity, viewModel: SessionDetailViewModel, 
 
 @Composable
 private fun SetCardHeader(record: SetRecordEntity, unit: WeightUnit) {
+    val loadText = record.loadKg.takeIf { it > 0 }?.let { unit.format(it) } ?: "bodyweight"
+    val work =
+        record.actualDurationS?.let {
+            "${it}s" + (record.plannedDurationS?.let { p -> " (target ${p}s)" } ?: "")
+        } ?: "${record.actualReps} ×"
     Text(
-        "${record.exerciseName} — ${record.actualReps} × ${unit.format(record.loadKg)}",
+        "${record.exerciseName} — $work ${if (record.actualDurationS != null) "@ $loadText" else loadText}",
         style = MaterialTheme.typography.titleMedium,
     )
     record.plannedLoadKg?.takeIf { it != record.loadKg }?.let {
@@ -184,6 +189,17 @@ private fun SetCardHeader(record: SetRecordEntity, unit: WeightUnit) {
 @Composable
 private fun SetChips(record: SetRecordEntity, analysis: SetAnalysis) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        record.actualDurationS?.let { actual ->
+            val planned = record.plannedDurationS
+            VerdictChip(
+                if (planned != null) "Held $actual/${planned}s" else "Held ${actual}s",
+                when {
+                    planned == null || actual >= planned -> ChipTone.OK
+                    actual >= (planned * 0.9).toInt() -> ChipTone.WARN
+                    else -> ChipTone.BAD
+                },
+            )
+        }
         analysis.tempoCompliance?.let { compliance ->
             val ok = compliance.repsFullyCompliant == compliance.repsEvaluated
             VerdictChip(

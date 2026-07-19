@@ -55,18 +55,58 @@ class PlanValidationTest {
     }
 
     @Test
-    fun `rejects sets with both or neither load unit`() {
+    fun `rejects both load units, accepts bodyweight (neither)`() {
         val both = validPlan.replace("\"load_kg\": 120", "\"load_kg\": 120, \"load_lb\": 265")
         val neither = validPlan.replace("\"load_kg\": 120, ", "")
         val bothErrors = json.decodeFromString(PlanFile.serializer(), both).validate()
         val neitherErrors = json.decodeFromString(PlanFile.serializer(), neither).validate()
         assertTrue(bothErrors.any { it.contains("both load_kg and load_lb") })
-        assertTrue(neitherErrors.any { it.contains("must have load_kg or load_lb") })
+        assertTrue(neitherErrors.isEmpty(), "bodyweight sets (no load) must validate: $neitherErrors")
     }
 
     @Test
     fun `wrong schema version is rejected`() {
         val plan = json.decodeFromString(PlanFile.serializer(), validPlan.replace("1.0", "9.9"))
         assertTrue(plan.validate().any { it.contains("schemaVersion") })
+    }
+
+    @Test
+    fun `timed sets validate with duration_s and no load`() {
+        val timed =
+            """
+            {
+              "schemaVersion": "1.1",
+              "planName": "Core Block",
+              "sessions": [{
+                "name": "Core",
+                "exercises": [
+                  { "exercise": "plank", "sets": [{ "duration_s": 60, "rest_s": 60 }] },
+                  { "exercise": "farmers_walk", "sets": [{ "duration_s": 40, "load_lb": 106, "rest_s": 90 }] }
+                ]
+              }]
+            }
+            """.trimIndent()
+        val plan = json.decodeFromString(PlanFile.serializer(), timed)
+        assertTrue(plan.validate().isEmpty(), plan.validate().joinToString())
+        val plankSet = plan.sessions[0].exercises[0].sets[0]
+        assertTrue(plankSet.isTimed)
+        assertEquals(60, plankSet.durationS)
+        assertEquals(null, plankSet.resolvedLoadKg)
+    }
+
+    @Test
+    fun `rejects reps plus duration, tempo on timed sets, and zero duration`() {
+        fun errorsFor(set: String): List<String> {
+            val plan =
+                """
+                {"schemaVersion": "1.1", "planName": "t", "sessions": [{"name": "s",
+                  "exercises": [{"exercise": "plank", "sets": [$set]}]}]}
+                """.trimIndent()
+            return json.decodeFromString(PlanFile.serializer(), plan).validate()
+        }
+        assertTrue(errorsFor("""{"reps": 5, "duration_s": 60}""").any { it.contains("both reps and duration_s") })
+        assertTrue(errorsFor("""{"duration_s": 60, "tempo": "4010"}""").any { it.contains("does not apply") })
+        assertTrue(errorsFor("""{"duration_s": 0}""").any { it.contains("duration_s must be positive") })
+        assertTrue(errorsFor("""{"rest_s": 60}""").any { it.contains("reps (dynamic set) or duration_s") })
     }
 }
