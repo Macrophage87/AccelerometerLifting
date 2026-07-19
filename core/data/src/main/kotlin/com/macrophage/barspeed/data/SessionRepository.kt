@@ -125,14 +125,25 @@ class SessionRepository(
         null
     }
 
-    /** Seeded + user-defined exercises, id → definition. */
+    /** Seeded + user-defined exercises, id → definition. Unknown ids infer a kind from the name. */
     suspend fun exerciseById(id: String): ExerciseDef {
         ExerciseDef.seedById(id)?.let { return it }
         val custom = exerciseDao.byId(id)
         return if (custom != null) {
-            ExerciseDef(custom.id, custom.displayName, StartPhase.valueOf(custom.startsWith), isCustom = true)
+            ExerciseDef(
+                custom.id,
+                custom.displayName,
+                StartPhase.valueOf(custom.startsWith),
+                kind = ExerciseDef.inferKind(custom.id),
+                isCustom = true,
+            )
         } else {
-            ExerciseDef(id, id.replace('_', ' ').replaceFirstChar { it.uppercase() }, isCustom = true)
+            ExerciseDef(
+                id,
+                id.replace('_', ' ').replaceFirstChar { it.uppercase() },
+                kind = ExerciseDef.inferKind(id),
+                isCustom = true,
+            )
         }
     }
 

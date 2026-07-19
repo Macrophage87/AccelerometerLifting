@@ -420,6 +420,22 @@ private fun ExplosiveSetStage(state: RecordState, viewModel: RecordViewModel, sl
                 )
             }
         }
+        Spacer(Modifier.height(8.dp))
+        // Cadence matters for cyclical ballistic work (kettlebell swings).
+        val cadence =
+            if (state.live.repCount >= 2 && state.setElapsedS > 0) {
+                state.live.repCount * 60 / state.setElapsedS
+            } else {
+                null
+            }
+        Text(
+            listOfNotNull(
+                "Elapsed ${formatMmSs(state.setElapsedS)}",
+                cadence?.let { "$it reps/min" },
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = BarColors.Sub,
+        )
         Spacer(Modifier.height(14.dp))
         Column(Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {

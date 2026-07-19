@@ -50,8 +50,30 @@ data class ExerciseDef(
                 ExerciseDef("clean", "Clean", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
                 ExerciseDef("power_clean", "Power Clean", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
                 ExerciseDef("push_press", "Push Press", StartPhase.ECCENTRIC, ExerciseKind.EXPLOSIVE),
+                ExerciseDef("kettlebell_swing", "Kettlebell Swing", StartPhase.ECCENTRIC, ExerciseKind.EXPLOSIVE),
+                ExerciseDef("kettlebell_snatch", "KB Snatch", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
+                ExerciseDef("kettlebell_clean", "KB Clean", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
             )
 
         fun seedById(id: String): ExerciseDef? = SEED.firstOrNull { it.id == id }
+
+        private val EXPLOSIVE_HINTS = listOf("swing", "snatch", "clean", "jerk", "push_press", "throw", "slam")
+        private val HOLD_HINTS = listOf("plank", "hold", "hang", "wall_sit", "l_sit")
+        private val CARRY_HINTS = listOf("carry", "walk", "farmer", "yoke", "sled")
+
+        /**
+         * Best-effort kind for exercise ids not in the seed list (LLM plans invent
+         * ids freely), so e.g. "kettlebell_swing_heavy" still gets the explosive
+         * UI and "pallof_hold" the timed one.
+         */
+        fun inferKind(id: String): ExerciseKind {
+            val lower = id.lowercase()
+            return when {
+                EXPLOSIVE_HINTS.any { lower.contains(it) } -> ExerciseKind.EXPLOSIVE
+                HOLD_HINTS.any { lower.contains(it) } -> ExerciseKind.HOLD
+                CARRY_HINTS.any { lower.contains(it) } -> ExerciseKind.CARRY
+                else -> ExerciseKind.DYNAMIC
+            }
+        }
     }
 }

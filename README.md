@@ -44,9 +44,10 @@ Copy this prompt into Claude (fill in the bracketed context), then in the app:
 > `back_squat`, `bench_press`, `deadlift`, `overhead_press`, `barbell_row`,
 > `romanian_deadlift`, `front_squat`, `hip_thrust`; for timed work `plank`,
 > `side_plank`, `dead_hang`, `farmers_walk`, `suitcase_carry`; and for
-> explosive olympic-style lifts `snatch`, `power_snatch`, `clean`,
-> `power_clean`, `push_press` (the app tracks peak bar velocity per rep on
-> these — no tempo prescriptions). Each set has
+> explosive/ballistic lifts `snatch`, `power_snatch`, `clean`, `power_clean`,
+> `push_press`, `kettlebell_swing`, `kettlebell_snatch`, `kettlebell_clean`
+> (the app tracks peak velocity per rep and cadence on these — no tempo
+> prescriptions). Each set has
 > exactly one of `{"reps": int}` (dynamic sets) or `{"duration_s": int}` (holds
 > and carries — planks, farmer's walks). Load is `"load_kg"` or `"load_lb"` (at
 > most one, whichever unit I use; omit both for bodyweight). Optional per set:
