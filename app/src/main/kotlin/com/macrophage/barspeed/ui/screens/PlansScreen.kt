@@ -78,7 +78,9 @@ fun PlansScreen(navController: NavController, viewModel: PlansViewModel = viewMo
             )
             Spacer(Modifier.height(12.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(plans) { plan -> PlanCard(plan, viewModel) }
+                items(plans) { plan ->
+                    PlanCard(plan, viewModel) { navController.navigate("plan/${plan.id}") }
+                }
             }
         }
     }
@@ -158,11 +160,11 @@ fun PlansScreen(navController: NavController, viewModel: PlansViewModel = viewMo
 }
 
 @Composable
-private fun PlanCard(plan: PlanEntity, viewModel: PlansViewModel) {
-    Card(Modifier.fillMaxWidth()) {
+private fun PlanCard(plan: PlanEntity, viewModel: PlansViewModel, onOpen: () -> Unit) {
+    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(plan.name, style = MaterialTheme.typography.titleSmall)
-            Text(plan.status, style = MaterialTheme.typography.bodySmall)
+            Text("${plan.status} · tap to view", style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (plan.status != PlanEntity.STATUS_ACTIVE) {
                     TextButton(onClick = { viewModel.activate(plan.id) }) { Text("Make active") }

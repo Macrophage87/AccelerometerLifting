@@ -15,6 +15,7 @@ import androidx.navigation.navArgument
 import com.macrophage.barspeed.ui.LiftingTheme
 import com.macrophage.barspeed.ui.screens.DevicesScreen
 import com.macrophage.barspeed.ui.screens.HomeScreen
+import com.macrophage.barspeed.ui.screens.PlanDetailScreen
 import com.macrophage.barspeed.ui.screens.PlansScreen
 import com.macrophage.barspeed.ui.screens.RecordScreen
 import com.macrophage.barspeed.ui.screens.SessionDetailScreen
@@ -54,6 +55,12 @@ private fun AppNav() {
         composable("home") { HomeScreen(navController) }
         composable("devices") { DevicesScreen(navController) }
         composable("plans") { PlansScreen(navController) }
+        composable(
+            "plan/{planId}",
+            arguments = listOf(navArgument("planId") { type = NavType.LongType }),
+        ) { backStackEntry ->
+            PlanDetailScreen(navController, backStackEntry.arguments?.getLong("planId") ?: 0L)
+        }
         composable("record") { RecordScreen(navController) }
         composable(
             "session/{sessionId}",

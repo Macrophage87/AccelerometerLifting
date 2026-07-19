@@ -60,6 +60,8 @@ class PlanRepository(
 
     suspend fun delete(planId: Long) = planDao.delete(planId)
 
+    suspend fun plan(planId: Long): PlanEntity? = planDao.byId(planId)
+
     suspend fun planFile(planId: Long): PlanFile? = planDao.byId(planId)?.let { decode(it) }
 
     fun decode(entity: PlanEntity): PlanFile? = try {
