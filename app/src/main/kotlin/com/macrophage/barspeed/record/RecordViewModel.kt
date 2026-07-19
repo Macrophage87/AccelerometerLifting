@@ -97,6 +97,7 @@ data class RecordState(
     /** RPE the lifter picked for the just-finished set (rest screen), if any. */
     val lastSetRpe: Int? = null,
     val lastSetFailed: Boolean = false,
+    val lastSetWarmup: Boolean = false,
     val audioCues: Boolean = false,
     val imuConnected: Boolean = false,
     val hrmConnected: Boolean = false,
@@ -450,6 +451,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                     ),
                     lastSetRpe = null,
                     lastSetFailed = false,
+                    lastSetWarmup = false,
                     restRemainingS = restS,
                     setsCompleted = stateFlow.value.setsCompleted + 1,
                     // Pre-fill next-set inputs so in-rest edits start from plan values.
@@ -486,11 +488,12 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
      * Rest-screen RPE tap: saves the rating on the just-finished set, then —
      * when another set is queued (or ad-hoc) — immediately starts the next set.
      */
-    fun rateLastSetAndContinue(rpe: Int?, failed: Boolean) {
+    fun rateLastSetAndContinue(rpe: Int?, failed: Boolean, warmup: Boolean) {
         val setId = lastRecordedSetId ?: return
         viewModelScope.launch {
-            sessionRepository.rateSet(setId, rpe, failed)
-            stateFlow.value = stateFlow.value.copy(lastSetRpe = rpe, lastSetFailed = failed)
+            sessionRepository.rateSet(setId, rpe, failed, warmup)
+            stateFlow.value =
+                stateFlow.value.copy(lastSetRpe = rpe, lastSetFailed = failed, lastSetWarmup = warmup)
             if (stateFlow.value.adHoc || stateFlow.value.nextSlot != null) startNextSet()
         }
     }

@@ -727,55 +727,113 @@ private fun RestingStage(state: RecordState, viewModel: RecordViewModel) {
     }
 }
 
-/** One tile of the effort grid: stored RPE value (null = failed set), wording, tint. */
-private data class RpeOption(val rpe: Int?, val description: String, val color: Color)
+/** One tile of the effort grid: what gets stored plus the gym-facing wording. */
+private data class RpeOption(
+    val rpe: Int?,
+    val warmup: Boolean,
+    val failed: Boolean,
+    val description: String,
+    val color: Color,
+)
 
-private val RPE_OPTIONS =
-    listOf(
-        RpeOption(6, "4+ reps in the tank", BarColors.Volt),
-        RpeOption(7, "3 reps left", BarColors.Volt),
-        RpeOption(8, "2 reps left", BarColors.VoltDim),
-        RpeOption(9, "1 rep left", BarColors.Amber),
-        RpeOption(10, "Nothing left", BarColors.Amber),
-        RpeOption(null, "Failed the set", BarColors.Red),
-    )
+/** Narrative wording per set type — "reps left" means nothing for a plank or a snatch. */
+private fun rpeOptions(timed: Boolean, explosive: Boolean): List<RpeOption> {
+    val effort =
+        when {
+            timed ->
+                listOf(
+                    6 to "Easy — plenty of time left",
+                    7 to "Solid — had more in me",
+                    8 to "Hard — a little left",
+                    9 to "Very hard — seconds left",
+                    10 to "Max — hit my limit",
+                )
+            explosive ->
+                listOf(
+                    6 to "Easy — bar was flying",
+                    7 to "Solid — fast and crisp",
+                    8 to "Hard — speed dropping",
+                    9 to "Very hard — grindy",
+                    10 to "Max — barely made it",
+                )
+            else ->
+                listOf(
+                    6 to "Easy — 4+ reps left",
+                    7 to "Solid — 3 reps left",
+                    8 to "Hard — 2 reps left",
+                    9 to "Very hard — 1 rep left",
+                    10 to "Max — nothing left",
+                )
+        }
+    val failText =
+        when {
+            timed -> "Broke early — failed"
+            explosive -> "Missed the lift"
+            else -> "Failed the set"
+        }
+    return listOf(RpeOption(null, true, false, "Warm-up — barely work", BarColors.Blue)) +
+        effort.map { (rpe, text) -> RpeOption(rpe, false, false, text, rpeColor(rpe)) } +
+        RpeOption(null, false, true, failText, BarColors.Red)
+}
+
+private fun rpeColor(rpe: Int): Color = when {
+    rpe <= 7 -> BarColors.Volt
+    rpe == 8 -> BarColors.VoltDim
+    else -> BarColors.Amber
+}
 
 /**
- * Rest-screen RPE grid: tapping a rating saves it on the finished set and
- * (when another set is queued) starts the next set in the same tap.
+ * Rest-screen effort grid: tapping a narrative saves it on the finished set
+ * (warm-ups get a flag instead of an RPE, keeping effort data clean) and,
+ * when another set is queued, starts the next set in the same tap.
  */
 @Composable
 private fun RpeSelector(state: RecordState, viewModel: RecordViewModel, startsNext: Boolean) {
-    val rated = state.lastSetRpe != null || state.lastSetFailed
+    val feedback = state.lastFeedback
+    val options =
+        rpeOptions(
+            timed = feedback?.actualDurationS != null,
+            explosive = feedback?.explosive == true,
+        )
+    val rated = state.lastSetRpe != null || state.lastSetFailed || state.lastSetWarmup
     val ratedText =
-        RPE_OPTIONS.firstOrNull {
-            if (state.lastSetFailed) it.rpe == null else it.rpe == state.lastSetRpe
+        options.firstOrNull {
+            when {
+                state.lastSetWarmup -> it.warmup
+                state.lastSetFailed -> it.failed
+                else -> !it.warmup && !it.failed && it.rpe == state.lastSetRpe
+            }
         }?.description
     SectionCaption(
         when {
-            rated -> "Rated · ${ratedText ?: ""}"
-            startsNext -> "How hard was that? Tap to rate & start next set"
-            else -> "How hard was that? Tap to rate"
+            rated -> "Logged · ${ratedText ?: ""}"
+            startsNext -> "How was that set? Tap to log & start next set"
+            else -> "How was that set? Tap to log"
         },
     )
     Spacer(Modifier.height(6.dp))
-    RPE_OPTIONS.chunked(2).forEach { row ->
+    options.chunked(2).forEach { row ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         ) {
             row.forEach { option ->
                 val selected =
-                    if (option.rpe == null) state.lastSetFailed else state.lastSetRpe == option.rpe
+                    when {
+                        option.warmup -> state.lastSetWarmup
+                        option.failed -> state.lastSetFailed
+                        else -> !state.lastSetWarmup && !state.lastSetFailed && state.lastSetRpe == option.rpe
+                    }
                 RpeTile(option, selected, modifier = Modifier.weight(1f)) {
-                    viewModel.rateLastSetAndContinue(option.rpe, failed = option.rpe == null)
+                    viewModel.rateLastSetAndContinue(option.rpe, failed = option.failed, warmup = option.warmup)
                 }
             }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
         }
     }
     if (startsNext) {
         TextButton(onClick = viewModel::startNextSet, modifier = Modifier.fillMaxWidth()) {
-            Text("Start next set without rating", color = BarColors.Sub)
+            Text("Start next set without logging", color = BarColors.Sub)
         }
     }
 }

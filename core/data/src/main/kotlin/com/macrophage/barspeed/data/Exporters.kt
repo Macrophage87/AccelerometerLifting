@@ -74,6 +74,7 @@ class SessionExporter(
             side = record.side,
             rpe = record.rpe,
             failed = record.failed,
+            warmup = record.warmup,
             restS = record.plannedRestS,
             tempoPrescribed = record.tempo,
             tempoCompliance =

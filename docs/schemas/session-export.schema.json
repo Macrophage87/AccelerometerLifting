@@ -194,6 +194,10 @@
         "failed": {
           "type": "boolean",
           "description": "True when the lifter marked the set as failed."
+        },
+        "warmup": {
+          "type": "boolean",
+          "description": "True for warm-up sets; these carry no RPE and should be excluded from effort/fatigue analysis."
         }
       }
     },

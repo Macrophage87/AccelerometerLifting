@@ -66,6 +66,8 @@ data class SetRecordEntity(
     val rpe: Int? = null,
     /** True when the lifter marked the set as failed. */
     val failed: Boolean = false,
+    /** True for warm-up sets — kept out of the RPE scale so effort data stays clean. */
+    val warmup: Boolean = false,
     val tempo: String? = null,
     val targetMeanConVelMps: Double? = null,
     val velocityLossStopPct: Double? = null,

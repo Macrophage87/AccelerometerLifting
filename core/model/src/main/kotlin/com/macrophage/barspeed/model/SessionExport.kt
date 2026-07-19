@@ -48,6 +48,8 @@ data class SetExport(
     val rpe: Int? = null,
     /** True when the lifter marked the set as failed. Omitted when false. */
     val failed: Boolean = false,
+    /** True for warm-up sets (no RPE recorded). Omitted when false. */
+    val warmup: Boolean = false,
     @SerialName("rest_s") val restS: Int? = null,
     val tempoPrescribed: String? = null,
     val tempoCompliance: TempoComplianceExport? = null,

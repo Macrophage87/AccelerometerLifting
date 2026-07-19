@@ -229,6 +229,7 @@ private fun SetCardHeader(record: SetRecordEntity, unit: WeightUnit) {
 private fun SetChips(record: SetRecordEntity, analysis: SetAnalysis) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         if (record.failed) VerdictChip("FAILED", ChipTone.BAD)
+        if (record.warmup) VerdictChip("WARM-UP", ChipTone.NEUTRAL)
         record.rpe?.let { VerdictChip("RPE $it", if (it >= 10) ChipTone.WARN else ChipTone.NEUTRAL) }
         record.actualDurationS?.let { actual ->
             val planned = record.plannedDurationS
