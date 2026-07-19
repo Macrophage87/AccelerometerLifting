@@ -60,6 +60,8 @@ data class SetRecordEntity(
     /** Timed sets (planks, carries): actual and planned hold/carry seconds. */
     val actualDurationS: Int? = null,
     val plannedDurationS: Int? = null,
+    /** Unilateral sets: "left" or "right". */
+    val side: String? = null,
     val tempo: String? = null,
     val targetMeanConVelMps: Double? = null,
     val velocityLossStopPct: Double? = null,

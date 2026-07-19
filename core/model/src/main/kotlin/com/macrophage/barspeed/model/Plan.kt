@@ -36,6 +36,7 @@ data class PlanFile(
     companion object {
         const val SCHEMA_VERSION = "1.1"
         val SUPPORTED_SCHEMA_VERSIONS = setOf("1.0", "1.1")
+        val VALID_SIDES = setOf("left", "right")
     }
 }
 
@@ -64,6 +65,8 @@ data class PlanSetDef(
     /** Load in pounds; converted to kilograms on import. */
     @SerialName("load_lb") val loadLb: Double? = null,
     val tempo: String? = null,
+    /** For unilateral work: "left" or "right". Emit one set per side. */
+    val side: String? = null,
     @SerialName("targetMeanConcentricVelocity_mps") val targetMeanConcentricVelocityMps: Double? = null,
     @SerialName("velocityLossStop_pct") val velocityLossStopPct: Double? = null,
     @SerialName("rest_s") val restS: Int? = null,
@@ -92,6 +95,9 @@ data class PlanSetDef(
         }
         if (tempo != null && durationS != null) {
             errors += "$path.tempo does not apply to timed sets"
+        }
+        if (side != null && side !in PlanFile.VALID_SIDES) {
+            errors += "$path.side must be \"left\" or \"right\""
         }
         tempo?.let {
             if (Tempo.parseOrNull(it) == null) errors += "$path.tempo '$it' is not valid tempo notation"

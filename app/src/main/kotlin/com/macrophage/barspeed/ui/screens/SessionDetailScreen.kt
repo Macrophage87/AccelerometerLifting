@@ -203,12 +203,15 @@ private fun SetCard(record: SetRecordEntity, viewModel: SessionDetailViewModel, 
 @Composable
 private fun SetCardHeader(record: SetRecordEntity, unit: WeightUnit) {
     val loadText = record.loadKg.takeIf { it > 0 }?.let { unit.format(it) } ?: "bodyweight"
+    val name =
+        record.exerciseName +
+            (record.side?.let { " (${it.replaceFirstChar { c -> c.uppercase() }})" } ?: "")
     val work =
         record.actualDurationS?.let {
             "${it}s" + (record.plannedDurationS?.let { p -> " (target ${p}s)" } ?: "")
         } ?: "${record.actualReps} ×"
     Text(
-        "${record.exerciseName} — $work ${if (record.actualDurationS != null) "@ $loadText" else loadText}",
+        "$name — $work ${if (record.actualDurationS != null) "@ $loadText" else loadText}",
         style = MaterialTheme.typography.titleMedium,
     )
     record.plannedLoadKg?.takeIf { it != record.loadKg }?.let {

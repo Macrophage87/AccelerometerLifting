@@ -78,6 +78,24 @@
               "rest_s": 60
             }
           ]
+        },
+        {
+          "exercise": "suitcase_carry",
+          "notes": "Stay tall - don't lean away from the load.",
+          "sets": [
+            {
+              "duration_s": 30,
+              "load_kg": 24,
+              "side": "left",
+              "rest_s": 30
+            },
+            {
+              "duration_s": 30,
+              "load_kg": 24,
+              "side": "right",
+              "rest_s": 90
+            }
+          ]
         }
       ]
     },

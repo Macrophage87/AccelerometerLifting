@@ -240,10 +240,14 @@ private fun commonPrescriptions(sets: List<PlanSetDef>): List<String> {
 private fun SetGroupRow(group: SetGroup, unit: WeightUnit, kind: ExerciseKind?, common: List<String>) {
     val set = group.set
     val setLabel = if (group.firstSet == group.lastSet) "${group.firstSet}" else "${group.firstSet}–${group.lastSet}"
+    val sidePrefix = set.side?.let { "${it.replaceFirstChar { c -> c.uppercase() }} · " } ?: ""
     val work =
-        set.reps?.let { "$it reps" }
-            ?: set.durationS?.let { "${it}s ${if (kind == ExerciseKind.CARRY) "carry" else "hold"}" }
-            ?: "—"
+        sidePrefix +
+            (
+                set.reps?.let { "$it reps" }
+                    ?: set.durationS?.let { "${it}s ${if (kind == ExerciseKind.CARRY) "carry" else "hold"}" }
+                    ?: "—"
+                )
     val load = set.resolvedLoadKg?.takeIf { it > 0 }?.let { unit.format(it) } ?: "BW"
 
     Column(Modifier.padding(vertical = 3.dp)) {

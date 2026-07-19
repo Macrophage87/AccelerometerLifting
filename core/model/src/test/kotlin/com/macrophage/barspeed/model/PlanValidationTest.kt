@@ -108,5 +108,8 @@ class PlanValidationTest {
         assertTrue(errorsFor("""{"duration_s": 60, "tempo": "4010"}""").any { it.contains("does not apply") })
         assertTrue(errorsFor("""{"duration_s": 0}""").any { it.contains("duration_s must be positive") })
         assertTrue(errorsFor("""{"rest_s": 60}""").any { it.contains("reps (dynamic set) or duration_s") })
+        assertTrue(errorsFor("""{"duration_s": 30, "side": "top"}""").any { it.contains("side") })
+        assertTrue(errorsFor("""{"duration_s": 30, "side": "left"}""").isEmpty())
+        assertTrue(errorsFor("""{"reps": 8, "load_kg": 20, "side": "right"}""").isEmpty())
     }
 }

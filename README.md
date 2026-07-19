@@ -49,6 +49,8 @@ Copy this prompt into Claude (fill in the bracketed context), then in the app:
 > most one, whichever unit I use; omit both for bodyweight). Optional per set:
 > `"tempo"` (4-digit notation like "4010" or "30X0" — eccentric, bottom pause,
 > concentric, top pause seconds, X = explosive; dynamic sets only),
+> `"side"` ("left" or "right" for unilateral exercises like side planks,
+> suitcase carries, or single-leg work — emit one set per side),
 > `"targetMeanConcentricVelocity_mps"` (number),
 > `"velocityLossStop_pct"` (number, e.g. 20), and `"rest_s"` (int).
 >

@@ -71,6 +71,7 @@ class SessionExporter(
             plannedReps = record.plannedReps,
             durationS = record.actualDurationS,
             plannedDurationS = record.plannedDurationS,
+            side = record.side,
             restS = record.plannedRestS,
             tempoPrescribed = record.tempo,
             tempoCompliance =

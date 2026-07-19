@@ -43,6 +43,8 @@ data class PlannedSlot(
     val loadKg: Double?,
     val plannedLoadKg: Double?,
     val tempo: String?,
+    /** Unilateral sets: "left" or "right". */
+    val side: String? = null,
     /** Coach/LLM comment on this exercise from the plan, shown with the set. */
     val exerciseNotes: String? = null,
     val targetMeanConVelMps: Double? = null,
@@ -61,6 +63,7 @@ data class SetFeedback(
     val tempo: String?,
     val actualDurationS: Int? = null,
     val plannedDurationS: Int? = null,
+    val side: String? = null,
 )
 
 /** One pick in the "equipment busy — switch exercise" chooser. */
@@ -79,6 +82,8 @@ data class RecordState(
     val loadInput: String = "60",
     val repsInput: String = "5",
     val durationInput: String = "60",
+    /** Ad-hoc unilateral side: null (bilateral), "left", or "right". */
+    val sideInput: String? = null,
     val tempoInput: String = "",
     val live: LiveSetState = LiveSetState(),
     val setElapsedS: Int = 0,
@@ -264,6 +269,10 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         stateFlow.value = stateFlow.value.copy(durationInput = text)
     }
 
+    fun selectSide(side: String?) {
+        stateFlow.value = stateFlow.value.copy(sideInput = side)
+    }
+
     fun updateTempoInput(text: String) {
         stateFlow.value = stateFlow.value.copy(tempoInput = text)
     }
@@ -347,6 +356,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         val loadKg =
             if (s.adHoc || slot?.loadKg == null) s.weightUnit.parseToKg(s.loadInput) ?: 0.0 else slot.loadKg
         val plannedReps = if (s.adHoc) s.repsInput.toIntOrNull() else slot?.reps
+        val side = if (s.adHoc) s.sideInput else slot?.side
         val plannedDurationS = if (isTimed) s.currentTimedTargetS else null
         val actualDurationS =
             if (isTimed) ((System.currentTimeMillis() - setStartedAtMs) / 1000L).toInt() else null
@@ -401,6 +411,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                     plannedReps = plannedReps,
                     actualDurationS = actualDurationS,
                     plannedDurationS = plannedDurationS,
+                    side = side,
                     tempo = tempoText,
                     targetMeanConVelMps = slot?.targetMeanConVelMps,
                     velocityLossStopPct = slot?.velocityLossStopPct,
@@ -427,6 +438,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                         tempo = tempoText,
                         actualDurationS = actualDurationS,
                         plannedDurationS = plannedDurationS,
+                        side = side,
                     ),
                     restRemainingS = restS,
                     setsCompleted = stateFlow.value.setsCompleted + 1,
@@ -514,6 +526,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                         loadKg = set.resolvedLoadKg,
                         plannedLoadKg = set.resolvedLoadKg,
                         tempo = set.tempo,
+                        side = set.side,
                         exerciseNotes = exerciseDef.notes,
                         targetMeanConVelMps = set.targetMeanConcentricVelocityMps,
                         velocityLossStopPct = set.velocityLossStopPct,

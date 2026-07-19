@@ -19,6 +19,8 @@ data class CompletedSet(
     /** Timed sets (planks, carries): actual and planned hold/carry seconds. */
     val actualDurationS: Int? = null,
     val plannedDurationS: Int? = null,
+    /** Unilateral sets: "left" or "right". */
+    val side: String? = null,
     val tempo: String?,
     val targetMeanConVelMps: Double?,
     val velocityLossStopPct: Double?,
@@ -57,6 +59,7 @@ class SessionRepository(
                     plannedReps = set.plannedReps,
                     actualDurationS = set.actualDurationS,
                     plannedDurationS = set.plannedDurationS,
+                    side = set.side,
                     tempo = set.tempo,
                     targetMeanConVelMps = set.targetMeanConVelMps,
                     velocityLossStopPct = set.velocityLossStopPct,

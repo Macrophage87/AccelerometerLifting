@@ -177,6 +177,13 @@
         "plannedDuration_s": {
           "type": "integer",
           "minimum": 0
+        },
+        "side": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "description": "Unilateral sets: which side was trained."
         }
       }
     },

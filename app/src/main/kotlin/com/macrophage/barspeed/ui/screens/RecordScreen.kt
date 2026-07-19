@@ -288,6 +288,20 @@ private fun AdHocForm(state: RecordState, viewModel: RecordViewModel) {
         }
     }
     Spacer(Modifier.height(8.dp))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Side", style = MaterialTheme.typography.bodySmall, color = BarColors.Sub)
+        listOf(null to "Both", "left" to "Left", "right" to "Right").forEach { (value, label) ->
+            FilterChip(
+                selected = state.sideInput == value,
+                onClick = { viewModel.selectSide(value) },
+                label = { Text(label) },
+            )
+        }
+    }
+    Spacer(Modifier.height(4.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = state.loadInput,
@@ -421,9 +435,11 @@ private fun InSetHeader(state: RecordState, slot: PlannedSlot?) {
             ?: state.exerciseOptions.firstOrNull { it.id == state.selectedExerciseId }?.displayName
             ?: "Set"
     val loadKg = slot?.loadKg ?: state.weightUnit.parseToKg(state.loadInput)
+    val side = if (state.adHoc) state.sideInput else slot?.side
     val parts =
         listOfNotNull(
             exerciseName,
+            side?.replaceFirstChar { it.uppercase() },
             slot?.let { "Set ${it.setIndexInExercise + 1}/${it.setsInExercise}" },
             loadKg?.takeIf { it > 0 }?.let { state.weightUnit.format(it) }
                 ?: "bodyweight".takeIf { state.currentIsTimed },
@@ -636,9 +652,12 @@ private fun RestHeader(state: RecordState) {
             state.lastFeedback?.let { feedback ->
                 val loadText =
                     feedback.loadKg.takeIf { it > 0 }?.let { state.weightUnit.format(it) } ?: "BW"
+                val name =
+                    feedback.exerciseName +
+                        (feedback.side?.let { " (${it.replaceFirstChar { c -> c.uppercase() }})" } ?: "")
                 Text(
-                    feedback.actualDurationS?.let { "${feedback.exerciseName} ${it}s @ $loadText" }
-                        ?: "${feedback.exerciseName} ${feedback.analysis.reps.size} × $loadText",
+                    feedback.actualDurationS?.let { "$name ${it}s @ $loadText" }
+                        ?: "$name ${feedback.analysis.reps.size} × $loadText",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.height(6.dp))
@@ -792,6 +811,7 @@ private fun SlotCard(slot: PlannedSlot, heading: String, unit: WeightUnit, highl
             SectionCaption(heading, color = if (highlight) BarColors.Volt else BarColors.Sub)
             val core =
                 listOfNotNull(
+                    slot.side?.replaceFirstChar { it.uppercase() },
                     slot.reps?.let { "$it reps" },
                     slot.durationS?.let {
                         "${it}s " + if (slot.exercise.kind == ExerciseKind.CARRY) "carry" else "hold"

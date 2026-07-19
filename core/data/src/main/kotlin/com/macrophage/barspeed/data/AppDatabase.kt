@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RawStreamEntity::class,
         CustomExerciseEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,9 +35,17 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** v3: unilateral side column on set_records. */
+        private val MIGRATION_2_3 =
+            object : Migration(2, 3) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE set_records ADD COLUMN side TEXT")
+                }
+            }
+
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "accelerometer_lifting.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
     }
