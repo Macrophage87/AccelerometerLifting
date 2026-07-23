@@ -26,6 +26,8 @@ data class ExerciseDef(
     val startsWith: StartPhase = StartPhase.ECCENTRIC,
     val kind: ExerciseKind = ExerciseKind.DYNAMIC,
     val isCustom: Boolean = false,
+    /** True for straight-bar lifts — enables the plate-loading readout. */
+    val usesBarbell: Boolean = true,
 ) {
     val isTimed: Boolean get() = kind == ExerciseKind.HOLD || kind == ExerciseKind.CARRY
 
@@ -40,19 +42,37 @@ data class ExerciseDef(
                 ExerciseDef("romanian_deadlift", "Romanian Deadlift"),
                 ExerciseDef("barbell_row", "Barbell Row", startsWith = StartPhase.CONCENTRIC),
                 ExerciseDef("hip_thrust", "Hip Thrust", startsWith = StartPhase.CONCENTRIC),
-                ExerciseDef("plank", "Plank", kind = ExerciseKind.HOLD),
-                ExerciseDef("side_plank", "Side Plank", kind = ExerciseKind.HOLD),
-                ExerciseDef("dead_hang", "Dead Hang", kind = ExerciseKind.HOLD),
-                ExerciseDef("farmers_walk", "Farmer's Walk", kind = ExerciseKind.CARRY),
-                ExerciseDef("suitcase_carry", "Suitcase Carry", kind = ExerciseKind.CARRY),
+                ExerciseDef("plank", "Plank", kind = ExerciseKind.HOLD, usesBarbell = false),
+                ExerciseDef("side_plank", "Side Plank", kind = ExerciseKind.HOLD, usesBarbell = false),
+                ExerciseDef("dead_hang", "Dead Hang", kind = ExerciseKind.HOLD, usesBarbell = false),
+                ExerciseDef("farmers_walk", "Farmer's Walk", kind = ExerciseKind.CARRY, usesBarbell = false),
+                ExerciseDef("suitcase_carry", "Suitcase Carry", kind = ExerciseKind.CARRY, usesBarbell = false),
                 ExerciseDef("snatch", "Snatch", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
                 ExerciseDef("power_snatch", "Power Snatch", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
                 ExerciseDef("clean", "Clean", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
                 ExerciseDef("power_clean", "Power Clean", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
                 ExerciseDef("push_press", "Push Press", StartPhase.ECCENTRIC, ExerciseKind.EXPLOSIVE),
-                ExerciseDef("kettlebell_swing", "Kettlebell Swing", StartPhase.ECCENTRIC, ExerciseKind.EXPLOSIVE),
-                ExerciseDef("kettlebell_snatch", "KB Snatch", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
-                ExerciseDef("kettlebell_clean", "KB Clean", StartPhase.CONCENTRIC, ExerciseKind.EXPLOSIVE),
+                ExerciseDef(
+                    "kettlebell_swing",
+                    "Kettlebell Swing",
+                    StartPhase.ECCENTRIC,
+                    ExerciseKind.EXPLOSIVE,
+                    usesBarbell = false,
+                ),
+                ExerciseDef(
+                    "kettlebell_snatch",
+                    "KB Snatch",
+                    StartPhase.CONCENTRIC,
+                    ExerciseKind.EXPLOSIVE,
+                    usesBarbell = false,
+                ),
+                ExerciseDef(
+                    "kettlebell_clean",
+                    "KB Clean",
+                    StartPhase.CONCENTRIC,
+                    ExerciseKind.EXPLOSIVE,
+                    usesBarbell = false,
+                ),
             )
 
         fun seedById(id: String): ExerciseDef? = SEED.firstOrNull { it.id == id }
@@ -74,6 +94,16 @@ data class ExerciseDef(
                 CARRY_HINTS.any { lower.contains(it) } -> ExerciseKind.CARRY
                 else -> ExerciseKind.DYNAMIC
             }
+        }
+
+        private val NON_BARBELL_HINTS =
+            listOf("dumbbell", "db_", "kettlebell", "kb_", "cable", "machine", "band", "bodyweight", "smith")
+
+        /** Plate math only applies to straight-bar lifts. */
+        fun inferBarbell(id: String): Boolean {
+            val lower = id.lowercase()
+            if (NON_BARBELL_HINTS.any { lower.contains(it) }) return false
+            return inferKind(id) == ExerciseKind.DYNAMIC || inferKind(id) == ExerciseKind.EXPLOSIVE
         }
     }
 }

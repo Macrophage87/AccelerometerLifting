@@ -165,10 +165,24 @@ class WitmotionClient(context: Context, private val clock: () -> Long = System::
     private val samplesFlow = MutableSharedFlow<ImuSample>(extraBufferCapacity = 512)
     val samples: SharedFlow<ImuSample> = samplesFlow
 
+    private val commandHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
     override fun onReady(gatt: BluetoothGatt) {
-        // Request 100 Hz streaming; the DSP measures the actual delivered rate.
-        writeCommand(gatt, WitmotionCommands.setOutputRate(WitmotionProtocol.OutputRate.RATE_100_HZ))
-        writeCommand(gatt, WitmotionCommands.readRegister(WitmotionProtocol.REG_BATTERY))
+        // The GATT stack allows one operation at a time (the CCC descriptor write
+        // is still in flight here), and WitMotion registers ignore writes until
+        // unlocked. Sequence: unlock → 100 Hz rate → save → battery read, spaced
+        // out so none of them gets dropped. The DSP still measures the actual
+        // delivered rate as a safety net.
+        val commands =
+            listOf(
+                WitmotionCommands.unlock(),
+                WitmotionCommands.setOutputRate(WitmotionProtocol.OutputRate.RATE_100_HZ),
+                WitmotionCommands.save(),
+                WitmotionCommands.readRegister(WitmotionProtocol.REG_BATTERY),
+            )
+        commands.forEachIndexed { i, cmd ->
+            commandHandler.postDelayed({ writeCommand(gatt, cmd) }, COMMAND_SPACING_MS * (i + 1))
+        }
     }
 
     override fun onNotification(uuid: UUID, value: ByteArray) {
@@ -204,6 +218,10 @@ class WitmotionClient(context: Context, private val clock: () -> Long = System::
     private fun estimateBatteryPct(centivolts: Int): Int {
         val volts = centivolts / 100.0
         return (((volts - 3.4) / (4.1 - 3.4)) * 100).toInt().coerceIn(0, 100)
+    }
+
+    private companion object {
+        const val COMMAND_SPACING_MS = 300L
     }
 }
 

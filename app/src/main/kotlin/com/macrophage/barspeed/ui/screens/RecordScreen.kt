@@ -44,6 +44,7 @@ import androidx.navigation.NavController
 import com.macrophage.barspeed.dsp.SetAnalysis
 import com.macrophage.barspeed.model.ExerciseKind
 import com.macrophage.barspeed.model.Phase
+import com.macrophage.barspeed.model.PlateMath
 import com.macrophage.barspeed.model.Tempo
 import com.macrophage.barspeed.model.WeightUnit
 import com.macrophage.barspeed.record.PlannedSlot
@@ -86,8 +87,8 @@ fun RecordScreen(navController: NavController, viewModel: RecordViewModel = view
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(end = 16.dp),
                     ) {
-                        SensorDot("IMU", state.imuConnected || state.demoMode)
-                        SensorDot("HRM", state.hrmConnected)
+                        SensorDot("IMU", state.imuConnected || state.demoMode, connecting = state.imuConnecting)
+                        SensorDot("HRM", state.hrmConnected, connecting = state.hrmConnecting)
                     }
                 },
             )
@@ -201,6 +202,13 @@ private fun ReadyStage(state: RecordState, viewModel: RecordViewModel) {
             )
         }
         AudioCueChip(state, viewModel)
+        if (!state.currentIsTimed) {
+            FilterChip(
+                selected = state.guidedRequested,
+                onClick = viewModel::toggleGuided,
+                label = { Text(if (state.guidedRequested) "Guided tempo ON" else "Guided tempo") },
+            )
+        }
     }
     TextButton(onClick = viewModel::finishSession, modifier = Modifier.fillMaxWidth()) {
         Text("Finish session", color = BarColors.Sub)
@@ -351,6 +359,10 @@ private fun InSetStage(state: RecordState, viewModel: RecordViewModel) {
         TimedSetStage(state, viewModel, slot)
         return
     }
+    if (state.guidedSet) {
+        GuidedSetStage(state, viewModel, slot)
+        return
+    }
     if (state.manualSet) {
         ManualSetStage(state, viewModel, slot)
         return
@@ -379,6 +391,60 @@ private fun InSetStage(state: RecordState, viewModel: RecordViewModel) {
         }
         Spacer(Modifier.height(14.dp))
         LiveRepBars(state, slot)
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = viewModel::endSet, modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            Text("END SET", style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+/**
+ * Voice-guided cadence set: the app calls the tempo ("Down… one… two… three…
+ * Up") and counts reps; the screen mirrors the voice with a phase countdown.
+ */
+@Composable
+private fun GuidedSetStage(state: RecordState, viewModel: RecordViewModel, slot: PlannedSlot?) {
+    val plannedReps = if (state.adHoc) state.repsInput.toIntOrNull() else slot?.reps
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        InSetHeader(state, slot)
+        Spacer(Modifier.height(10.dp))
+        val total = state.guidedPhaseTotal.coerceAtLeast(1)
+        val phaseColor =
+            when (state.guidedLabel) {
+                "DOWN" -> BarColors.Blue
+                "UP" -> BarColors.Volt
+                "HOLD" -> BarColors.Amber
+                "DONE" -> BarColors.Volt
+                else -> BarColors.Sub
+            }
+        ProgressRing(
+            progress = 1f - state.guidedCountdown / total.toFloat(),
+            color = phaseColor,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    state.guidedLabel.ifBlank { "GUIDED" },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = phaseColor,
+                    letterSpacing = 2.sp,
+                )
+                Text(
+                    if (state.guidedLabel == "DONE") "✓" else "${state.guidedCountdown}",
+                    style = MaterialTheme.typography.displayLarge,
+                )
+                Text(
+                    "rep ${state.manualReps}" + (plannedReps?.let { " of $it" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BarColors.Sub,
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            "Follow the voice — the app counts the reps.",
+            style = MaterialTheme.typography.bodySmall,
+            color = BarColors.Sub,
+        )
         Spacer(Modifier.height(24.dp))
         Button(onClick = viewModel::endSet, modifier = Modifier.fillMaxWidth().height(64.dp)) {
             Text("END SET", style = MaterialTheme.typography.titleLarge)
@@ -1182,6 +1248,14 @@ private fun SlotCard(slot: PlannedSlot, heading: String, unit: WeightUnit, highl
                 Spacer(Modifier.height(4.dp))
                 Text("“$notes”", style = MaterialTheme.typography.bodySmall, color = BarColors.Amber)
             }
+            if (slot.exercise.usesBarbell) {
+                slot.loadKg?.takeIf { it > 0 }?.let { loadKg ->
+                    plateLine(loadKg, unit)?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = BarColors.Blue)
+                    }
+                }
+            }
         }
     }
 }
@@ -1201,6 +1275,23 @@ private fun FinishedStage(state: RecordState, navController: NavController) {
         onClick = { navController.navigate("home") { popUpTo("home") { inclusive = true } } },
         modifier = Modifier.fillMaxWidth(),
     ) { Text("Done") }
+}
+
+/** "Plates/side: 45 + 25 + 2.5 (45 lb bar)" for barbell lifts. */
+private fun plateLine(loadKg: Double, unit: WeightUnit): String? {
+    val breakdown = PlateMath.perSide(loadKg, unit)
+    val barText = "${trim(breakdown.barWeight)} ${unit.suffix} bar"
+    return when {
+        breakdown.belowBar -> "Below bar weight ($barText)"
+        breakdown.platesPerSide.isEmpty() && breakdown.leftoverPerSide == 0.0 -> "Empty bar ($barText)"
+        else -> {
+            val plates = breakdown.platesPerSide.joinToString(" + ") { trim(it) }
+            val leftover =
+                breakdown.leftoverPerSide.takeIf { it > 0 }
+                    ?.let { " (+${trim(it)} short)" } ?: ""
+            "Plates/side: $plates$leftover ($barText)"
+        }
+    }
 }
 
 private fun formatMmSs(totalS: Int): String = String.format(Locale.US, "%d:%02d", totalS / 60, totalS % 60)

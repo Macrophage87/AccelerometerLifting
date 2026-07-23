@@ -27,6 +27,9 @@ object WitmotionProtocol {
     const val REG_RATE = 0x03
     const val REG_BATTERY = 0x64
 
+    /** Unlock key register: writes to other registers are ignored until unlocked. */
+    const val REG_KEY = 0x69
+
     /** Values for REG_RATE. */
     enum class OutputRate(val registerValue: Int, val hz: Double) {
         RATE_10_HZ(0x06, 10.0),
@@ -41,6 +44,13 @@ object WitmotionProtocol {
 object WitmotionCommands {
     private fun command(register: Int, valueL: Int, valueH: Int): ByteArray =
         byteArrayOf(0xFF.toByte(), 0xAA.toByte(), register.toByte(), valueL.toByte(), valueH.toByte())
+
+    /**
+     * Unlock configuration registers (FF AA 69 88 B5). The firmware silently
+     * ignores register writes — including the output rate — until this is sent,
+     * which leaves the sensor at its 10 Hz factory default.
+     */
+    fun unlock(): ByteArray = command(WitmotionProtocol.REG_KEY, 0x88, 0xB5)
 
     /** Set the streaming output rate. Follow with [save] to persist across power cycles. */
     fun setOutputRate(rate: WitmotionProtocol.OutputRate): ByteArray =

@@ -147,6 +147,7 @@ class SessionRepository(
                 StartPhase.valueOf(custom.startsWith),
                 kind = ExerciseDef.inferKind(custom.id),
                 isCustom = true,
+                usesBarbell = ExerciseDef.inferBarbell(custom.id),
             )
         } else {
             ExerciseDef(
@@ -154,6 +155,7 @@ class SessionRepository(
                 id.replace('_', ' ').replaceFirstChar { it.uppercase() },
                 kind = ExerciseDef.inferKind(id),
                 isCustom = true,
+                usesBarbell = ExerciseDef.inferBarbell(id),
             )
         }
     }

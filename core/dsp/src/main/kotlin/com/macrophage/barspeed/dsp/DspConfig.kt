@@ -34,6 +34,10 @@ data class DspConfig(
      * noise-flat (m/s).
      */
     val anchorStabilityBandMps: Double = 0.02,
-    /** Minimum displacement for a rep to count, filters bumps/re-racks (m). */
-    val minRomM: Double = 0.15,
+    /**
+     * Minimum displacement for a rep to count, filters bumps/re-racks (m).
+     * Kept low because measured ROM is attenuated at low sample rates: real
+     * ~0.5 m squats measured only ~0.15-0.2 m in 10 Hz field data.
+     */
+    val minRomM: Double = 0.10,
 )

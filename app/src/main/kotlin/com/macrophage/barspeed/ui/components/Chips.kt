@@ -37,13 +37,18 @@ fun VerdictChip(text: String, tone: ChipTone, modifier: Modifier = Modifier) {
     )
 }
 
-/** Status-bar style connection dot: "IMU ●" volt when live, grey otherwise. */
+/** Status-bar style connection dot: volt when live, amber while reconnecting, grey when off. */
 @Composable
-fun SensorDot(label: String, connected: Boolean, modifier: Modifier = Modifier) {
+fun SensorDot(label: String, connected: Boolean, modifier: Modifier = Modifier, connecting: Boolean = false) {
     Text(
         "$label ●",
         style = MaterialTheme.typography.bodySmall,
-        color = if (connected) BarColors.Volt else BarColors.Ghost,
+        color =
+        when {
+            connected -> BarColors.Volt
+            connecting -> BarColors.Amber
+            else -> BarColors.Ghost
+        },
         modifier = modifier,
     )
 }

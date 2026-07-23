@@ -97,6 +97,13 @@ data class RecordState(
     /** Sensorless rep set: the lifter taps to count reps. */
     val manualSet: Boolean = false,
     val manualReps: Int = 0,
+    /** Lifter opted into voice-guided cadence for tempo work. */
+    val guidedRequested: Boolean = false,
+    /** Active guided-cadence set: the app calls the tempo and counts the reps. */
+    val guidedSet: Boolean = false,
+    val guidedLabel: String = "",
+    val guidedCountdown: Int = 0,
+    val guidedPhaseTotal: Int = 1,
     val setElapsedS: Int = 0,
     val hrBpm: Int? = null,
     /** Rolling HRV (RMSSD, ms) over the last ~2 minutes of beats. */
@@ -110,7 +117,9 @@ data class RecordState(
     val lastSetWarmup: Boolean = false,
     val audioCues: Boolean = false,
     val imuConnected: Boolean = false,
+    val imuConnecting: Boolean = false,
     val hrmConnected: Boolean = false,
+    val hrmConnecting: Boolean = false,
     val demoMode: Boolean = false,
     val sessionId: Long? = null,
     val setsCompleted: Int = 0,
@@ -160,6 +169,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     private var tickJob: Job? = null
     private var restJob: Job? = null
     private var demoJob: Job? = null
+    private var guidedJob: Job? = null
     private var setStartedAtMs = 0L
     private var lastRecordedSetId: Long? = null
 
@@ -178,12 +188,20 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             autoConnect.imuState.collect { s ->
-                stateFlow.value = stateFlow.value.copy(imuConnected = s is ConnectionState.Connected)
+                stateFlow.value =
+                    stateFlow.value.copy(
+                        imuConnected = s is ConnectionState.Connected,
+                        imuConnecting = s is ConnectionState.Connecting,
+                    )
             }
         }
         viewModelScope.launch {
             autoConnect.hrmState.collect { s ->
-                stateFlow.value = stateFlow.value.copy(hrmConnected = s is ConnectionState.Connected)
+                stateFlow.value =
+                    stateFlow.value.copy(
+                        hrmConnected = s is ConnectionState.Connected,
+                        hrmConnecting = s is ConnectionState.Connecting,
+                    )
             }
         }
         viewModelScope.launch {
@@ -312,6 +330,10 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         stateFlow.value = stateFlow.value.copy(sideInput = side)
     }
 
+    fun toggleGuided() {
+        stateFlow.value = stateFlow.value.copy(guidedRequested = !stateFlow.value.guidedRequested)
+    }
+
     fun updateTempoInput(text: String) {
         stateFlow.value = stateFlow.value.copy(tempoInput = text)
     }
@@ -338,7 +360,15 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         // Never announce reps on timed sets: a carry's gait can trip the rep detector.
         announceReps = !s.currentIsTimed
         // No sensor, no demo, not timed → the lifter counts reps by tapping.
-        val manualSet = !s.currentIsTimed && !s.imuConnected && !s.demoMode
+        var manualSet = !s.currentIsTimed && !s.imuConnected && !s.demoMode
+        // Guided cadence: the app calls the tempo out loud and counts the reps
+        // itself. Chosen explicitly, or the default for sensorless tempo work.
+        val guidedTempo =
+            (if (s.adHoc) s.tempoInput.ifBlank { null } else s.currentSlot?.tempo)?.let { Tempo.parseOrNull(it) }
+        val guidedSet =
+            !s.currentIsTimed && exercise.kind != ExerciseKind.EXPLOSIVE && guidedTempo != null &&
+                (s.guidedRequested || manualSet)
+        if (guidedSet) manualSet = true
         setStartedAtMs = System.currentTimeMillis()
         RecordingService.start(getApplication())
 
@@ -377,7 +407,13 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
                 live = LiveSetState(),
                 manualSet = manualSet,
                 manualReps = 0,
+                guidedSet = guidedSet,
+                guidedLabel = "",
+                guidedCountdown = 0,
             )
+        if (guidedSet && guidedTempo != null) {
+            startGuidedCadence(guidedTempo, plannedRepsForSet)
+        }
     }
 
     private fun onSample(sample: ImuSample) {
@@ -386,6 +422,71 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         stateFlow.value = stateFlow.value.copy(live = live)
         countPhaseSeconds(live.phase, live.currentPhaseElapsedS)
         announceRepMilestones(live.repCount)
+    }
+
+    /**
+     * Voice-guided cadence (e.g. tempo 4010): "Down, one, two, three, Up",
+     * ~2 s breather, "Rep one", and around again — with a 3 s lead-in. The app
+     * counts the reps; the lifter just follows the voice.
+     */
+    private fun startGuidedCadence(tempo: Tempo, plannedReps: Int?) {
+        if (voice == null) voice = VoiceCounter(getApplication())
+        guidedJob =
+            viewModelScope.launch {
+                speakGuided("Ready")
+                countdownPhase("GET READY", GUIDED_LEAD_IN_S)
+                var rep = 1
+                while (true) {
+                    val eccS = tempo.eccentricS.toInt().coerceAtLeast(1)
+                    speakGuided("Down")
+                    updateGuided("DOWN", eccS, eccS)
+                    for (second in 1..eccS) {
+                        delay(1_000)
+                        if (second < eccS) {
+                            speakGuided("$second")
+                            updateGuided("DOWN", eccS - second, eccS)
+                        }
+                    }
+                    val bottomS = tempo.bottomPauseS.toInt()
+                    if (bottomS > 0) {
+                        speakGuided("Hold")
+                        countdownPhase("HOLD", bottomS)
+                    }
+                    speakGuided("Up")
+                    countdownPhase("UP", (tempo.concentricS ?: 1.0).toInt().coerceAtLeast(1))
+                    countdownPhase("BREATHE", maxOf(tempo.topPauseS.toInt(), GUIDED_TOP_PAUSE_MIN_S))
+                    stateFlow.value = stateFlow.value.copy(manualReps = rep)
+                    when {
+                        plannedReps != null && rep >= plannedReps -> {
+                            speakGuided("Done")
+                            updateGuided("DONE", 0, 1)
+                            return@launch
+                        }
+                        plannedReps != null && rep == plannedReps - 1 -> speakGuided("Last rep")
+                        else -> speakGuided("Rep $rep")
+                    }
+                    delay(1_000)
+                    rep++
+                }
+            }
+    }
+
+    private suspend fun countdownPhase(label: String, seconds: Int) {
+        updateGuided(label, seconds, seconds.coerceAtLeast(1))
+        repeat(seconds) { done ->
+            delay(1_000)
+            updateGuided(label, seconds - done - 1, seconds.coerceAtLeast(1))
+        }
+    }
+
+    private fun updateGuided(label: String, remaining: Int, total: Int) {
+        stateFlow.value =
+            stateFlow.value.copy(guidedLabel = label, guidedCountdown = remaining, guidedPhaseTotal = total)
+    }
+
+    /** Guided cadence is an audio feature: it speaks even with the count toggle off. */
+    private fun speakGuided(text: String) {
+        voice?.speak(text)
     }
 
     /** Tap-to-count for sensorless sets; announces milestones like sensor reps. */
@@ -447,6 +548,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         hrJob?.cancel()
         tickJob?.cancel()
         demoJob?.cancel()
+        guidedJob?.cancel()
         val s = stateFlow.value
         val exercise = currentExercise(s)
         val slot = s.currentSlot
@@ -714,5 +816,7 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
 
         /** ~2 minutes of beats at typical training heart rates. */
         const val ROLLING_HRV_BEATS = 150
+        const val GUIDED_LEAD_IN_S = 3
+        const val GUIDED_TOP_PAUSE_MIN_S = 2
     }
 }

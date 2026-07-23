@@ -61,8 +61,16 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = viewMode
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 8.dp),
                     ) {
-                        SensorDot("IMU", imuState is ConnectionState.Connected)
-                        SensorDot("HRM", hrmState is ConnectionState.Connected)
+                        SensorDot(
+                            "IMU",
+                            imuState is ConnectionState.Connected,
+                            connecting = imuState is ConnectionState.Connecting,
+                        )
+                        SensorDot(
+                            "HRM",
+                            hrmState is ConnectionState.Connected,
+                            connecting = hrmState is ConnectionState.Connecting,
+                        )
                         TextButton(onClick = viewModel::toggleWeightUnit) {
                             Text("${state.weightUnit.suffix} ⇄", color = BarColors.Sub)
                         }
@@ -98,6 +106,9 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = viewMode
                 }
                 TextButton(onClick = { navController.navigate("plans") }, modifier = Modifier.weight(1f)) {
                     Text("Plans", color = BarColors.Sub)
+                }
+                TextButton(onClick = { navController.navigate("guide") }, modifier = Modifier.weight(1f)) {
+                    Text("Guide", color = BarColors.Sub)
                 }
             }
             Spacer(Modifier.height(6.dp))
