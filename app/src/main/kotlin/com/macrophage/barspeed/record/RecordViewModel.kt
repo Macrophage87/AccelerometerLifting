@@ -94,6 +94,8 @@ data class RecordState(
     val sideInput: String? = null,
     val tempoInput: String = "",
     val live: LiveSetState = LiveSetState(),
+    /** Lifter forced manual tracking for upcoming sets (e.g. cable work with the sensor still on the bar). */
+    val manualRequested: Boolean = false,
     /** Sensorless rep set: the lifter taps to count reps. */
     val manualSet: Boolean = false,
     val manualReps: Int = 0,
@@ -334,6 +336,11 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
         stateFlow.value = stateFlow.value.copy(guidedRequested = !stateFlow.value.guidedRequested)
     }
 
+    /** Choose sensor (auto) vs manual tracking for the next sets; sticky until changed. */
+    fun setManualMode(manual: Boolean) {
+        stateFlow.value = stateFlow.value.copy(manualRequested = manual)
+    }
+
     fun updateTempoInput(text: String) {
         stateFlow.value = stateFlow.value.copy(tempoInput = text)
     }
@@ -359,8 +366,8 @@ class RecordViewModel(app: Application) : AndroidViewModel(app) {
             }
         // Never announce reps on timed sets: a carry's gait can trip the rep detector.
         announceReps = !s.currentIsTimed
-        // No sensor, no demo, not timed → the lifter counts reps by tapping.
-        var manualSet = !s.currentIsTimed && !s.imuConnected && !s.demoMode
+        // Manual when chosen explicitly, or when there's no sensor and no demo.
+        var manualSet = !s.currentIsTimed && (s.manualRequested || (!s.imuConnected && !s.demoMode))
         // Guided cadence: the app calls the tempo out loud and counts the reps
         // itself. Chosen explicitly, or the default for sensorless tempo work.
         val guidedTempo =

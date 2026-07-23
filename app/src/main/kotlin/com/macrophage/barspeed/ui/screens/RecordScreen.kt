@@ -186,11 +186,14 @@ private fun ReadyStage(state: RecordState, viewModel: RecordViewModel) {
     } else {
         AdHocForm(state, viewModel)
     }
-    Spacer(Modifier.height(16.dp))
-    // Sets always start: without a sensor (and not in demo), reps are tap-counted.
-    val manual = !state.currentIsTimed && !state.imuConnected && !state.demoMode
+    if (!state.currentIsTimed) {
+        Spacer(Modifier.height(8.dp))
+        TrackingModeRow(state, viewModel)
+    }
+    Spacer(Modifier.height(12.dp))
+    val manual = !state.currentIsTimed && (state.manualRequested || (!state.imuConnected && !state.demoMode))
     Button(onClick = viewModel::beginSet, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        Text(if (manual) "START SET — count reps manually" else "START SET", fontWeight = FontWeight.Bold)
+        Text(if (manual) "START SET — manual count" else "START SET", fontWeight = FontWeight.Bold)
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -254,6 +257,27 @@ private fun SwitchExerciseSection(state: RecordState, viewModel: RecordViewModel
             confirmButton = {
                 TextButton(onClick = { showChooser = false }) { Text("Cancel") }
             },
+        )
+    }
+}
+
+/** Sensor (auto) vs manual tracking for the upcoming set; sticky across sets. */
+@Composable
+private fun TrackingModeRow(state: RecordState, viewModel: RecordViewModel) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Tracking", style = MaterialTheme.typography.bodySmall, color = BarColors.Sub)
+        FilterChip(
+            selected = !state.manualRequested,
+            onClick = { viewModel.setManualMode(false) },
+            label = { Text(if (state.imuConnected || state.demoMode) "Auto (sensor)" else "Auto (no sensor)") },
+        )
+        FilterChip(
+            selected = state.manualRequested,
+            onClick = { viewModel.setManualMode(true) },
+            label = { Text("Manual") },
         )
     }
 }
@@ -819,10 +843,18 @@ private fun RestingStage(state: RecordState, viewModel: RecordViewModel) {
                 )
             }
         }
+        if (next.isTimed.not()) {
+            Spacer(Modifier.height(8.dp))
+            TrackingModeRow(state, viewModel)
+        }
         Spacer(Modifier.height(12.dp))
         RpeSelector(state, viewModel, startsNext = true)
     } else if (state.adHoc) {
         AdHocForm(state, viewModel)
+        if (!state.currentIsTimed) {
+            Spacer(Modifier.height(8.dp))
+            TrackingModeRow(state, viewModel)
+        }
         Spacer(Modifier.height(12.dp))
         RpeSelector(state, viewModel, startsNext = true)
     } else {
